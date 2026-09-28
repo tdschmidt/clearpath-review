@@ -1367,6 +1367,18 @@ export function DraftForm({
     [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [reconciled, setReconciled] = useState(!historical);
+  const [waitAfterSharing, setWaitAfterSharing] = useDraftState(
+    draftKey + "wait",
+    false,
+  );
+  const [waitingOwner, setWaitingOwner] = useDraftState(
+    draftKey + "waiting-owner",
+    review.submitter,
+  );
+  const [waitingReason, setWaitingReason] = useDraftState(
+    draftKey + "waiting-reason",
+    "Response to the shared requests",
+  );
   const [communicatesDecision, setCommunicatesDecision] = useDraftState(
     draftKey + "decision",
     !historical && !!decision && existing?.decisionId === decision.id,
@@ -1536,6 +1548,42 @@ export function DraftForm({
             Only selected submitter requests and this message will be shared.
             Internal bases and notes are excluded. Check any wording you add.
           </p>
+          {!decision && pending.length > 0 && (
+            <div className="decision-package">
+              <label className="check-line">
+                <input
+                  type="checkbox"
+                  checked={waitAfterSharing}
+                  onChange={(e) => setWaitAfterSharing(e.target.checked)}
+                />
+                <span>
+                  After sharing, wait for a response
+                  <small>
+                    Sharing the feedback will also record who acts next. Saving
+                    a draft does neither.
+                  </small>
+                </span>
+              </label>
+              {waitAfterSharing && (
+                <div className="form-grid">
+                  <Field label="Waiting on">
+                    <input
+                      value={waitingOwner}
+                      maxLength={120}
+                      onChange={(e) => setWaitingOwner(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Reason for waiting">
+                    <input
+                      value={waitingReason}
+                      maxLength={2000}
+                      onChange={(e) => setWaitingReason(e.target.value)}
+                    />
+                  </Field>
+                </div>
+              )}
+            </div>
+          )}
           {decision && (
             <div className="decision-package">
               <div>
@@ -1642,11 +1690,21 @@ export function DraftForm({
               !reconciled ||
               !body.trim() ||
               !subject.trim() ||
-              !review.submitterToken
+              (!decision &&
+                waitAfterSharing &&
+                (!waitingOwner.trim() || !waitingReason.trim()))
             }
             onClick={() =>
               void run({
                 type: "publish_feedback",
+                ...(!decision && waitAfterSharing
+                  ? {
+                      waiting: {
+                        nextOwner: waitingOwner,
+                        reason: waitingReason,
+                      },
+                    }
+                  : {}),
                 findingIds: selected.filter((id) =>
                   pending.some((f) => f.id === id),
                 ),

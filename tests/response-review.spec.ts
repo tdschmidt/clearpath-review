@@ -134,17 +134,23 @@ test("returned evidence brings a waiting case back to review and resolves only t
   const findings = (await getReview(page.request, review.id)).findings;
   const evidenceFinding = findings[0];
   const correctionFinding = findings[1];
-  await internalAction(page.request, review.id, {
-    type: "publish_feedback",
-    findingIds: findings.map((finding) => finding.id),
-    subject: "Destination evidence and fee correction",
-    body: "Please answer both requests before approval can be considered.",
-  });
-  await internalAction(page.request, review.id, {
-    type: "set_waiting",
-    nextOwner: review.submitter,
-    reason: "Waiting for destination evidence and corrected creative.",
-  });
+  await page.goto(`/#review/${review.id}`);
+  await page
+    .getByRole("button", { name: "Prepare feedback", exact: true })
+    .first()
+    .click();
+  const feedback = page.getByRole("dialog", { name: "Prepare a reply" });
+  await feedback
+    .getByRole("checkbox", { name: /After sharing, wait for a response/ })
+    .check();
+  const waiting = await browserAction(page, review.id, () =>
+    feedback
+      .getByRole("button", { name: "Share feedback on submission link" })
+      .click(),
+  );
+  expect(waiting.status).toBe("waiting");
+  expect(waiting.nextOwner).toBe(review.submitter);
+  expect(waiting.publishedFeedback).toHaveLength(1);
   await page.goto("/#queue");
   await expect(
     page.getByRole("button", { name: "To review", exact: true }),

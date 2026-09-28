@@ -1335,6 +1335,7 @@ function FindingEditor({
   const [error, setError] = useState("");
   const [responseIds, setResponseIds] = useState<string[]>([]);
   const [shareStatus, setShareStatus] = useState(false);
+  const [resumeReview, setResumeReview] = useState(review.status === "waiting");
   const responses = (review.responses || []).filter(
     (r) =>
       finding && (r.findingIds.includes(finding.id) || !r.findingIds.length),
@@ -1374,6 +1375,7 @@ function FindingEditor({
             reason,
             responseIds,
             shareWithSubmitter: shareStatus,
+            resumeReview,
           }
         : editor.mode === "edit"
           ? {
@@ -1488,6 +1490,22 @@ function FindingEditor({
                           : "Open"}
                       ” is shared. Your reasoning stays internal; this is not
                       package approval.
+                    </small>
+                  </span>
+                </label>
+              )}
+              {review.status === "waiting" && (
+                <label className="check-line">
+                  <input
+                    type="checkbox"
+                    checked={resumeReview}
+                    onChange={(e) => setResumeReview(e.target.checked)}
+                  />
+                  <span>
+                    Return this case to the reviewer after recording
+                    <small>
+                      Other unresolved requests stay open. Uncheck to keep the
+                      existing waiting state.
                     </small>
                   </span>
                 </label>

@@ -25,3 +25,7 @@ Communication records select an immutable message ID and version, including earl
 The review and queue headers use less vertical space, leaving more of the working material visible. Finding classification is optional detail; audience, the concern and basis, requested action, owner, and required/advisory status remain prominent because they affect who does what and what can block a decision. This is a small refinement of the existing layout, not a visual redesign.
 
 Phone-width inspection found that opening an assessment could leave the new panel far below the viewport. Assessment, material, and evidence actions now move focus to the panel they open. The stacked layout must preserve the same clear next action as the desktop view.
+
+## Combine deliberate handoffs with the work that causes them
+
+Sharing requests can also record a chosen waiting owner and reason in the same action; saving the message as a draft changes neither. When disposing of a finding in a waiting case, a visible choice returns the case to its reviewer or preserves the wait. Other unresolved findings remain open. These choices remove separate tracker updates while leaving the user in control of the next responsibility; they do not send email or decide compliance.
