@@ -10,6 +10,71 @@ import type {
 } from "../shared/types";
 
 const fixture = (path: string) => resolve("public/fixtures", path);
+async function createExternalDraftCase(
+  request: APIRequestContext,
+  title: string,
+) {
+  const response = await request.post("/api/submissions", {
+    multipart: {
+      payload: JSON.stringify({
+        title,
+        product: "personal_loan",
+        submitter: "Taylor Partner",
+        submittedBy: "Taylor Partner",
+        submitterEmail: "taylor@example.com",
+        channel: "Paid social",
+        launchDate: "2026-10-12",
+        advertisedOffer: "Standard loan",
+        intendedUse: "Named affiliate social placement in California.",
+        copy: "Original version-one copy.",
+        destinationUrl: "",
+        summary: "Initial package",
+        fileRoles: ["creative"],
+      }),
+      files: {
+        name: "social-ad.png",
+        mimeType: "image/png",
+        buffer: readFileSync(fixture("loan/v1/social-ad.png")),
+      },
+    },
+  });
+  expect(response.status()).toBe(201);
+  return (await response.json()) as SubmitterReceipt;
+}
+async function concurrentExternalRevision(
+  request: APIRequestContext,
+  token: string,
+  copy: string,
+) {
+  const latest: SubmitterCase = await (
+    await request.get(`/api/submissions/${token}`)
+  ).json();
+  const base = latest.revisions.at(-1)!;
+  const response = await request.post(`/api/submissions/${token}/revisions`, {
+    multipart: {
+      payload: JSON.stringify({
+        expectedVersion: latest.version,
+        submittedBy: "Another collaborator",
+        summary: "Updated by another collaborator",
+        product: base.product,
+        channel: base.channel,
+        launchDate: base.launchDate,
+        advertisedOffer: base.advertisedOffer,
+        intendedUse: base.intendedUse,
+        copy,
+        destinationUrl: base.destinationUrl,
+        retainedComponents: base.components.map(({ assetId, role }) => ({
+          assetId,
+          role,
+        })),
+        fileRoles: [],
+        replacements: [],
+      }),
+    },
+  });
+  expect(response.ok(), await response.text()).toBeTruthy();
+  return (await response.json()) as SubmitterCase;
+}
 type Action = CaseAction extends infer A
   ? A extends { expectedVersion: number }
     ? Omit<A, "expectedVersion">
@@ -474,4 +539,142 @@ test("offer references preserve original sources and create separately cited imm
       { exact: true },
     ),
   ).toBeVisible();
+});
+
+test("a recovered note-only revision draft keeps newer package text after explicit reconciliation", async ({
+  page,
+}) => {
+  const receipt = await createExternalDraftCase(
+    page.request,
+    "Draft recovery without stale copy",
+  );
+  await page.goto(`/submit/${receipt.token}`);
+  await page
+    .getByRole("button", { name: "Submit updated package", exact: true })
+    .click();
+  const form = page.locator(".partner-package-form");
+  await form.getByLabel("What changed?").fill("My only change is this note.");
+  const saved = await page.evaluate(
+    (token) => JSON.parse(sessionStorage.getItem(`clearpath:submit:${token}`)!),
+    receipt.token,
+  );
+  expect(saved.baseRevisionId).toBe(receipt.submission.revisions[0].id);
+  expect(saved.edits).toEqual({ summary: "My only change is this note." });
+  const latest = await concurrentExternalRevision(
+    page.request,
+    receipt.token,
+    "Corrected version-two copy that must survive.",
+  );
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.reload();
+  await page
+    .getByRole("button", { name: "Submit updated package", exact: true })
+    .click();
+  await expect(
+    form.getByRole("heading", { name: "The package has changed to version 2" }),
+  ).toBeVisible();
+  await expect(
+    form.getByRole("button", { name: "Submit new version" }),
+  ).toBeDisabled();
+  await form
+    .getByRole("checkbox", { name: /I have checked the latest package/ })
+    .check();
+  await form
+    .getByRole("button", { name: "Use latest package with reviewed edits" })
+    .click();
+  await expect(form.getByLabel("Accompanying advertising copy")).toHaveValue(
+    "Corrected version-two copy that must survive.",
+  );
+  await expect(form.getByLabel("What changed?")).toHaveValue(
+    "My only change is this note.",
+  );
+  const submitted = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/submissions/${receipt.token}/revisions`) &&
+      response.request().method() === "POST",
+  );
+  await form.getByRole("button", { name: "Submit new version" }).click();
+  const next: SubmitterCase = await (await submitted).json();
+  expect(next.revisions.at(-1)?.copy).toBe(
+    "Corrected version-two copy that must survive.",
+  );
+  expect(next.revisions.at(-1)?.components).toEqual(
+    latest.revisions.at(-1)?.components,
+  );
+});
+
+test("an in-page package conflict requires a text choice and preserves the selected destination PDF", async ({
+  page,
+}) => {
+  const receipt = await createExternalDraftCase(
+    page.request,
+    "Draft conflict with selected file",
+  );
+  await page.goto(`/submit/${receipt.token}`);
+  await page
+    .getByRole("button", { name: "Submit updated package", exact: true })
+    .click();
+  const form = page.locator(".partner-package-form");
+  await form
+    .getByLabel("Accompanying advertising copy")
+    .fill("My deliberate replacement copy.");
+  await form
+    .getByLabel("What changed?")
+    .fill("Changed copy and added destination proof.");
+  await form
+    .locator('input[type="file"][multiple]')
+    .setInputFiles(fixture("loan/v3/destination.pdf"));
+  await form
+    .getByRole("combobox", { name: "Role for destination.pdf", exact: true })
+    .selectOption("destination");
+  await concurrentExternalRevision(
+    page.request,
+    receipt.token,
+    "Another collaborator's corrected copy.",
+  );
+  const failed = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/submissions/${receipt.token}/revisions`) &&
+      response.request().method() === "POST",
+  );
+  await form.getByRole("button", { name: "Submit new version" }).click();
+  expect((await failed).status()).toBe(409);
+  await expect(
+    form.getByRole("heading", { name: "The package has changed to version 2" }),
+  ).toBeVisible();
+  await expect(
+    form.getByRole("button", {
+      name: "Use latest package with reviewed edits",
+    }),
+  ).toBeDisabled();
+  await form.getByRole("radio", { name: /Keep my draft edit/ }).check();
+  await form
+    .getByRole("checkbox", { name: /I have checked the latest package/ })
+    .check();
+  await form
+    .getByRole("button", { name: "Use latest package with reviewed edits" })
+    .click();
+  await expect(form.getByLabel("Accompanying advertising copy")).toHaveValue(
+    "My deliberate replacement copy.",
+  );
+  await expect(
+    form.getByRole("combobox", {
+      name: "Role for destination.pdf",
+      exact: true,
+    }),
+  ).toHaveValue("destination");
+  const submitted = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/submissions/${receipt.token}/revisions`) &&
+      response.request().method() === "POST",
+  );
+  await form.getByRole("button", { name: "Submit new version" }).click();
+  const next: SubmitterCase = await (await submitted).json();
+  expect(next.revisions.at(-1)?.copy).toBe("My deliberate replacement copy.");
+  expect(
+    next.revisions.at(-1)?.components.map((component) => component.role),
+  ).toEqual(["creative", "destination"]);
+  expect(
+    next.assets.some((asset) => asset.name === "destination.pdf"),
+  ).toBeTruthy();
 });

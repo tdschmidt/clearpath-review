@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { api, ApiError, multipart } from "./api";
+import { usePackageDraft, type DraftChoice } from "./submitter-drafts";
 import { bytes, date, dateTime, ErrorMessage } from "./components";
 import {
   PRODUCT_LABELS,
@@ -57,6 +58,19 @@ const blank: SubmissionFields = {
   copy: "",
   destinationUrl: "",
   summary: "",
+};
+const fieldNames: Record<keyof SubmissionFields, string> = {
+  title: "Submission name",
+  product: "Product",
+  submitter: "Updated by",
+  submitterEmail: "Contact email",
+  channel: "Placement",
+  launchDate: "Target launch date",
+  advertisedOffer: "Advertised offer",
+  intendedUse: "Intended use",
+  copy: "Accompanying copy",
+  destinationUrl: "Destination URL",
+  summary: "Revision note",
 };
 const externalStatus = {
   received: "Received for review",
@@ -159,9 +173,11 @@ function validateUploads(files: Upload[]) {
 function UploadList({
   uploads,
   onChange,
+  currentAssetIds,
 }: {
   uploads: Upload[];
   onChange: (files: Upload[]) => void;
+  currentAssetIds?: Set<string>;
 }) {
   return (
     <div className="partner-upload-list">
@@ -174,6 +190,29 @@ function UploadList({
               {bytes(entry.file.size)}
               {entry.replaces ? " · Replacement" : ""}
             </small>
+            {entry.replaces &&
+              currentAssetIds &&
+              !currentAssetIds.has(entry.replaces) && (
+                <div className="partner-replacement-warning">
+                  <p>
+                    The file this upload replaced is no longer in the latest
+                    package.
+                  </p>
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() =>
+                      onChange(
+                        uploads.map((file, i) =>
+                          i === index ? { ...file, replaces: null } : file,
+                        ),
+                      )
+                    }
+                  >
+                    Keep as an additional file
+                  </button>
+                </div>
+              )}
           </span>
           <select
             aria-label={`Role for ${entry.file.name}`}
@@ -451,6 +490,7 @@ export default function SubmitterApp() {
                     <PackageForm
                       token={token}
                       existing={submission}
+                      onLatest={setSubmission}
                       onRevised={(next) => {
                         setSubmission(next);
                         setRevisionOpen(false);
@@ -478,30 +518,40 @@ function PackageForm({
   existing,
   onCreated,
   onRevised,
+  onLatest,
 }: {
   token?: string;
   existing?: SubmitterCase;
   onCreated?: (receipt: SubmitterReceipt) => void;
   onRevised?: (submission: SubmitterCase) => void;
+  onLatest?: (submission: SubmitterCase) => void;
 }) {
-  const previous = useRef(existing?.revisions.at(-1)).current;
+  const latest = existing?.revisions.at(-1);
   const initial: SubmissionFields =
-    previous && existing
+    latest && existing
       ? {
           title: existing.title,
-          product: previous.product,
+          product: latest.product,
           submitter: existing.submitter,
           submitterEmail: existing.submitterEmail,
-          channel: previous.channel,
-          launchDate: previous.launchDate,
-          advertisedOffer: previous.advertisedOffer,
-          intendedUse: previous.intendedUse,
-          copy: previous.copy,
-          destinationUrl: previous.destinationUrl,
+          channel: latest.channel,
+          launchDate: latest.launchDate,
+          advertisedOffer: latest.advertisedOffer,
+          intendedUse: latest.intendedUse,
+          copy: latest.copy,
+          destinationUrl: latest.destinationUrl,
           summary: "",
         }
       : blank;
-  const draft = useTextDraft(`clearpath:submit:${token || "new"}`, initial);
+  const draft = usePackageDraft(
+    `clearpath:submit:${token || "new"}`,
+    latest?.id || "new",
+    initial,
+  );
+  const previous =
+    existing?.revisions.find(
+      (revision) => revision.id === draft.baseRevisionId,
+    ) || latest;
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [retained, setRetained] = useState(
     previous?.components.map((c) => ({ assetId: c.assetId, role: c.role })) ||
@@ -510,10 +560,34 @@ function PackageForm({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
+  const [choices, setChoices] = useState<
+    Partial<Record<keyof SubmissionFields, DraftChoice>>
+  >({});
+  const [checkedLatest, setCheckedLatest] = useState(false);
   const expectedVersion = useRef(existing?.version);
   const retry = useRef({ signature: "", key: crypto.randomUUID() });
   const fileInput = useRef<HTMLInputElement>(null);
-  useLeaveWarning(draft.dirty || uploads.length > 0);
+  const structureChanged =
+    JSON.stringify(retained) !==
+    JSON.stringify(
+      previous?.components.map(({ assetId, role }) => ({ assetId, role })) ||
+        [],
+    );
+  const orphanedReplacements = uploads.filter(
+    (upload) =>
+      upload.replaces &&
+      !previous?.components.some(
+        (component) => component.assetId === upload.replaces,
+      ),
+  );
+  useLeaveWarning(draft.dirty || uploads.length > 0 || structureChanged);
+  useEffect(() => {
+    setChoices({});
+    setCheckedLatest(false);
+  }, [latest?.id]);
+  useEffect(() => {
+    if (!draft.needsReconciliation) expectedVersion.current = existing?.version;
+  }, [existing?.version, draft.needsReconciliation]);
   const set = <K extends keyof SubmissionFields>(
     key: K,
     value: SubmissionFields[K],
@@ -541,6 +615,18 @@ function PackageForm({
     event.preventDefault();
     setError("");
     setConflict(false);
+    if (draft.needsReconciliation) {
+      setError(
+        "Reconcile your draft with the latest package before submitting.",
+      );
+      return;
+    }
+    if (orphanedReplacements.length) {
+      setError(
+        "A replacement refers to an earlier package. Remove it or explicitly keep it as an additional file.",
+      );
+      return;
+    }
     if (
       !draft.value.copy.trim() &&
       !uploads.some((f) => f.role === "creative") &&
@@ -603,6 +689,17 @@ function PackageForm({
     } catch (e) {
       setError(message(e));
       setConflict(e instanceof ApiError && e.status === 409);
+      if (e instanceof ApiError && e.status === 409 && token) {
+        try {
+          onLatest?.(
+            await api<SubmitterCase>(
+              `/api/submissions/${encodeURIComponent(token)}`,
+            ),
+          );
+        } catch {
+          /* Preserve all local input if refreshing also fails. */
+        }
+      }
     } finally {
       setBusy(false);
     }
@@ -627,7 +724,128 @@ function PackageForm({
           files before submitting.
         </p>
       )}
-      <fieldset disabled={busy}>
+      {draft.needsReconciliation && (
+        <section
+          className="partner-reconciliation"
+          aria-labelledby="draft-reconciliation-heading"
+        >
+          <h3 id="draft-reconciliation-heading">
+            {draft.legacy
+              ? "Review an older saved draft"
+              : `The package has changed to version ${latest?.number}`}
+          </h3>
+          <p>
+            {draft.legacy
+              ? "This older draft has no recorded base version. Choose which saved text to carry forward; nothing will be applied silently."
+              : "Your draft is still based on the earlier package. Fields you did not edit will use the latest values. Your new uploads remain here."}
+          </p>
+          {draft.latestChanges.length > 0 && (
+            <p className="partner-reconciliation-changes">
+              Latest changes:{" "}
+              {draft.latestChanges
+                .map((field) => fieldNames[field as keyof SubmissionFields])
+                .join(", ")}
+            </p>
+          )}
+          {draft.conflicts.map((field) => (
+            <div className="partner-draft-conflict" key={field}>
+              <h4>{fieldNames[field]}</h4>
+              <div>
+                <label>
+                  <input
+                    type="radio"
+                    name={`reconcile-${field}`}
+                    checked={choices[field] === "latest"}
+                    onChange={() =>
+                      setChoices((old) => ({ ...old, [field]: "latest" }))
+                    }
+                  />
+                  <span>
+                    Use latest package<pre>{initial[field] || "(empty)"}</pre>
+                  </span>
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name={`reconcile-${field}`}
+                    checked={choices[field] === "draft"}
+                    onChange={() =>
+                      setChoices((old) => ({ ...old, [field]: "draft" }))
+                    }
+                  />
+                  <span>
+                    Keep my draft edit
+                    <pre>{draft.value[field] || "(empty)"}</pre>
+                  </span>
+                </label>
+              </div>
+            </div>
+          ))}
+          {latest && (
+            <div className="partner-reconciliation-files">
+              <strong>Latest package · version {latest.number}</strong>
+              {latest.components.map((component) => {
+                const asset = existing?.assets.find(
+                  (item) => item.id === component.assetId,
+                );
+                return (
+                  <a
+                    key={component.assetId}
+                    href={submitterAssetUrl(token!, component.assetId)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <FileText size={14} />
+                    {asset?.name} · {ROLE_LABELS[component.role]}
+                  </a>
+                );
+              })}
+              {!latest.components.length && (
+                <p>Copy-only package. Review the latest text changes above.</p>
+              )}
+            </div>
+          )}
+          <label className="check-line">
+            <input
+              type="checkbox"
+              checked={checkedLatest}
+              onChange={(event) => setCheckedLatest(event.target.checked)}
+            />
+            <span>
+              I have checked the latest package. I will recheck Keep, Replace,
+              and Remove choices before submitting.
+            </span>
+          </label>
+          <button
+            type="button"
+            className="button primary"
+            disabled={
+              busy ||
+              !checkedLatest ||
+              draft.conflicts.some((field) => !choices[field])
+            }
+            onClick={() => {
+              if (!draft.reconcile(choices)) return;
+              setRetained(
+                latest?.components
+                  .filter(
+                    (component) =>
+                      !uploads.some(
+                        (upload) => upload.replaces === component.assetId,
+                      ),
+                  )
+                  .map(({ assetId, role }) => ({ assetId, role })) || [],
+              );
+              expectedVersion.current = existing?.version;
+              setConflict(false);
+              setError("");
+            }}
+          >
+            Use latest package with reviewed edits
+          </button>
+        </section>
+      )}
+      <fieldset disabled={busy || draft.needsReconciliation}>
         <legend>1. Campaign context</legend>
         {!existing && (
           <Field label="Campaign or submission name">
@@ -703,7 +921,7 @@ function PackageForm({
           />
         </Field>
       </fieldset>
-      <fieldset disabled={busy}>
+      <fieldset disabled={busy || draft.needsReconciliation}>
         <legend>2. Material to review</legend>
         {previous && token && (
           <div className="partner-retained">
@@ -828,7 +1046,15 @@ function PackageForm({
             }}
           />
         </div>
-        <UploadList uploads={uploads} onChange={setUploads} />
+        <UploadList
+          uploads={uploads}
+          onChange={setUploads}
+          currentAssetIds={
+            new Set(
+              previous?.components.map((component) => component.assetId) || [],
+            )
+          }
+        />
         <Field label="Accompanying advertising copy · optional">
           <textarea
             rows={4}
@@ -851,7 +1077,7 @@ function PackageForm({
           />
         </Field>
       </fieldset>
-      <fieldset disabled={busy}>
+      <fieldset disabled={busy || draft.needsReconciliation}>
         <legend>3. Your details</legend>
         <div className="form-grid">
           <Field label={existing ? "Updated by" : "Your name or team"}>
@@ -888,9 +1114,11 @@ function PackageForm({
       <ErrorMessage error={error} />
       {conflict && (
         <p className="partner-draft-note">
-          This package changed while you were working. Your text remains here.
-          Check the latest version before resubmitting; a page reload restores
-          text, but files need to be selected again.
+          Review activity changed while you were working. Your text and selected
+          files remain here.{" "}
+          {draft.needsReconciliation
+            ? "Reconcile the package above before submitting."
+            : "The package itself is unchanged; check your work and submit again."}
         </p>
       )}
       <div className="partner-form-footer">
@@ -899,7 +1127,13 @@ function PackageForm({
             ? "A new version requires a new review. Earlier decisions do not carry forward."
             : "The review team will confirm the package and return any questions here."}
         </p>
-        <button className="button primary" type="submit" disabled={busy}>
+        <button
+          className="button primary"
+          type="submit"
+          disabled={
+            busy || draft.needsReconciliation || orphanedReplacements.length > 0
+          }
+        >
           {busy ? (
             <LoaderCircle size={17} className="spin" />
           ) : (
