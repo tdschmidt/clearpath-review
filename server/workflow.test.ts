@@ -594,3 +594,31 @@ test('historical material citations stay editable and reference sources cannot c
   const reference = h.app.locals.store.offers.find((offer: { id: string }) => offer.id === base.offerId);
   assert.equal((await h.action(c, { type: 'add_finding', finding: { ...finding, sourceCitations: [reference.facts[0].citation] } })).status, 200);
 });
+
+
+test('changing an intake reference or applicability basis requires explicit recheck of prior resolutions', async t => {
+  const h = await setup(t);
+  let c: ReviewCase = (await h.multipart('/api/cases', base)).body;
+  c = (await h.action(c, { type: 'confirm_intake' })).body;
+  const finding = { kind: 'question', title: 'Check fee terms', detail: 'The recorded offer is the basis for this review.', request: 'Confirm the fee terms.', location: 'Caption', assetId: '', owner: REVIEWER, material: true };
+  c = (await h.action(c, { type: 'add_finding', finding })).body;
+  c = (await h.action(c, { type: 'disposition', findingId: c.findings[0].id, status: 'resolved', reason: 'Checked against the original reference.' })).body;
+  const originalDisposition = structuredClone(c.findings[0].disposition);
+  c = (await h.revise(c, { fileRoles: ['evidence'] }, [{ name: 'extra-evidence.pdf', bytes: destination }])).body;
+  assert.notEqual(c.findings[0].needsRecheck, true);
+  const reference = (await h.multipart('/api/offers', { product: 'personal_loan', name: 'Changed offer terms', version: '4', validFrom: '2026-09-01', validTo: '2026-11-30', source: 'New reference supplied for re-review.', disclosure: '', facts: [{ label: 'Fee', value: 'Different terms require review', sourceFileIndex: 0, page: 1 }] }, [{ name: 'changed-terms.pdf', bytes: destination }])).body;
+  c = (await h.action(c, { type: 'confirm_intake', offerId: reference.id })).body;
+  assert.equal(c.findings[0].status, 'resolved');
+  assert.equal(c.findings[0].needsRecheck, true);
+  assert.deepEqual(c.findings[0].disposition, originalDisposition);
+  const basisChange = c.history.findLast(event => event.type === 'review_basis_changed')!;
+  assert.ok(basisChange.text.includes(base.offerId));
+  assert.ok(basisChange.text.includes(reference.id));
+  assert.equal((await h.action(c, approved)).body.code, 'unresolved_findings');
+  c = (await h.action(c, { type: 'disposition', findingId: c.findings[0].id, status: 'dismissed', reason: 'Rechecked and documented why no change is needed.' })).body;
+  c = (await h.action(c, { type: 'confirm_intake', offerId: reference.id })).body;
+  assert.notEqual(c.findings[0].needsRecheck, true);
+  c = (await h.action(c, { type: 'confirm_intake', applicabilityReason: 'Updated applicability explanation.' })).body;
+  assert.equal(c.findings[0].needsRecheck, true);
+  assert.equal((await h.action(c, approved)).body.code, 'unresolved_findings');
+});

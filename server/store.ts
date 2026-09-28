@@ -241,16 +241,24 @@ export class WorkflowStore {
       const event = (type: string, text: string) => this.event(c, type, text, actor.name);
       if (applyHandoff(c, action, actor.name, this.offers, event)) return this.save(c, action.expectedVersion);
       switch (action.type) {
-        case 'confirm_intake':
-          if (((action.offerId !== undefined && action.offerId !== revision.offerId) || (action.applicabilityReason !== undefined && action.applicabilityReason !== revision.applicabilityReason)) && c.decisions.some(decision => decision.revisionId === revision.id)) throw new WorkflowError(409, 'Submit a new revision before changing the reference for a previously decided package.');
-          if (action.offerId !== undefined) revision.offerId = action.offerId;
-          if (action.applicabilityReason !== undefined) revision.applicabilityReason = action.applicabilityReason;
-          this.validateOffer(revision.offerId, c.product, true);
-          this.validateApplicability(revision.offerId, c.launchDate, revision.applicabilityReason || '');
+        case 'confirm_intake': {
+          const previousBasis = { offerId: revision.offerId, applicabilityReason: revision.applicabilityReason || '' };
+          const nextBasis = { offerId: action.offerId ?? previousBasis.offerId, applicabilityReason: action.applicabilityReason ?? previousBasis.applicabilityReason };
+          const basisChanged = previousBasis.offerId !== nextBasis.offerId || previousBasis.applicabilityReason !== nextBasis.applicabilityReason;
+          if (basisChanged && c.decisions.some(decision => decision.revisionId === revision.id)) throw new WorkflowError(409, 'Submit a new revision before changing the reference for a previously decided package.');
+          this.validateOffer(nextBasis.offerId, c.product, true);
+          this.validateApplicability(nextBasis.offerId, c.launchDate, nextBasis.applicabilityReason);
           if (!revision.intendedUse.trim()) throw new WorkflowError(400, 'Describe the intended use before confirming intake.');
+          Object.assign(revision, nextBasis);
+          if (basisChanged) {
+            const addressed = c.findings.filter(finding => finding.status !== 'open');
+            addressed.forEach(finding => { finding.needsRecheck = true; });
+            event('review_basis_changed', `Review basis changed from ${JSON.stringify(previousBasis)} to ${JSON.stringify(nextBasis)}. ${addressed.length} addressed finding${addressed.length === 1 ? '' : 's'} require recheck.`);
+          }
           c.confirmedRevisionId = revision.id; c.status = 'in_review'; c.nextOwner = c.owner; c.waitingReason = '';
           event('intake_confirmed', `Intake confirmed for revision ${revision.number}.`);
           break;
+        }
         case 'add_finding': {
           validateFinding(c, action.finding, this.offers);
           const finding = { ...action.finding, audience: action.finding.audience || 'internal' as const, id: id(), number: Math.max(0, ...c.findings.map(f => f.number)) + 1, status: 'open' as const, createdAt: now(), createdBy: actor.name, revisionId: revision.id, needsRecheck: false };
