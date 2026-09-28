@@ -11,7 +11,12 @@ import {
   Maximize2,
   AlertCircle,
 } from "lucide-react";
-import type { PDFDocumentLoadingTask } from "pdfjs-dist";
+import type {
+  PDFDocumentLoadingTask,
+  PDFDocumentProxy,
+  TextLayer as PDFTextLayer,
+} from "pdfjs-dist";
+import "./reviewer.css";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import {
   assetUrl,
@@ -23,11 +28,16 @@ import {
 export const date = (s: string) =>
   new Date(
     /^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T12:00:00` : s,
-  ).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  ).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 export const dateTime = (s: string) =>
   new Date(s).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
+    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
   });
@@ -176,33 +186,32 @@ function PdfPage({
   onCount: (count: number) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const textContainer = useRef<HTMLDivElement>(null);
+  const sheet = useRef<HTMLDivElement>(null);
+  const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Keep the same document open while changing pages. The original remains available
+  // even when a PDF cannot be rendered or has no embedded text.
   useEffect(() => {
     let cancelled = false;
     let task: PDFDocumentLoadingTask | undefined;
-    let render: { cancel: () => void; promise: Promise<unknown> } | undefined;
+    setDocument(null);
     setLoading(true);
     setError("");
-    import("pdfjs-dist")
+    void import("pdfjs-dist")
       .then(({ GlobalWorkerOptions, getDocument }) => {
         if (cancelled) return;
         GlobalWorkerOptions.workerSrc = workerUrl;
         task = getDocument(url);
         return task.promise;
       })
-      .then(async (pdf) => {
-        if (cancelled || !pdf) return;
-        onCount(pdf.numPages);
-        const pdfPage = await pdf.getPage(Math.min(page, pdf.numPages));
-        if (cancelled || !canvas.current) return;
-        const viewport = pdfPage.getViewport({ scale: 1.6 });
-        const target = canvas.current;
-        target.width = viewport.width;
-        target.height = viewport.height;
-        render = pdfPage.render({ canvas: target, viewport });
-        await render.promise;
-        if (!cancelled) setLoading(false);
+      .then((pdf) => {
+        if (!cancelled && pdf) {
+          onCount(pdf.numPages);
+          setDocument(pdf);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -214,26 +223,94 @@ function PdfPage({
       });
     return () => {
       cancelled = true;
-      render?.cancel();
       void task?.destroy();
     };
-  }, [url, page, onCount]);
+  }, [url, onCount]);
+
+  useEffect(() => {
+    if (!document) return;
+    let cancelled = false;
+    let render: { cancel: () => void; promise: Promise<unknown> } | undefined;
+    let textLayer: PDFTextLayer | undefined;
+    let resize: ResizeObserver | undefined;
+    setLoading(true);
+    setError("");
+    void document
+      .getPage(Math.min(Math.max(1, page), document.numPages))
+      .then(async (pdfPage) => {
+        if (
+          cancelled ||
+          !canvas.current ||
+          !textContainer.current ||
+          !sheet.current
+        )
+          return;
+        const viewport = pdfPage.getViewport({ scale: 1.6 });
+        const target = canvas.current;
+        target.width = viewport.width;
+        target.height = viewport.height;
+        render = pdfPage.render({ canvas: target, viewport });
+        await render.promise;
+        if (cancelled || !textContainer.current || !sheet.current) return;
+        const container = textContainer.current;
+        container.replaceChildren();
+        container.style.setProperty("--total-scale-factor", "1.6");
+        const scaleText = () => {
+          if (sheet.current)
+            container.style.transform = `scale(${sheet.current.clientWidth / viewport.width})`;
+        };
+        scaleText();
+        resize = new ResizeObserver(scaleText);
+        resize.observe(sheet.current);
+        const { TextLayer } = await import("pdfjs-dist");
+        if (cancelled) return;
+        textLayer = new TextLayer({
+          textContentSource: pdfPage.streamTextContent(),
+          container,
+          viewport,
+        });
+        await textLayer.render();
+        if (!cancelled) setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(
+            "This page could not be previewed. Download the original to inspect it.",
+          );
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+      render?.cancel();
+      textLayer?.cancel();
+      resize?.disconnect();
+      textContainer.current?.replaceChildren();
+    };
+  }, [document, page]);
   return (
     <>
       <ErrorMessage error={error} />
       {loading && (
-        <div className="preview-loading">
+        <div className="preview-loading" role="status">
           <LoaderCircle className="spin" size={22} /> Loading page…
         </div>
       )}
-      <canvas
-        ref={canvas}
-        className="pdf-canvas"
+      <div
+        className="pdf-sheet"
+        ref={sheet}
         style={{
           display: error ? "none" : "block",
           opacity: loading ? 0.3 : 1,
         }}
-      />
+      >
+        <canvas ref={canvas} className="pdf-canvas" aria-hidden="true" />
+        <div
+          ref={textContainer}
+          className="pdf-text-layer"
+          aria-label={`PDF page ${page}`}
+        />
+      </div>
     </>
   );
 }
@@ -241,19 +318,41 @@ export function AssetViewer({
   caseId,
   asset,
   compact = false,
+  page: selectedPage,
+  onPageChange,
+  zoom: selectedZoom,
+  onZoomChange,
+  sourceUrl,
+  downloadUrl,
 }: {
   caseId: string;
   asset?: Asset;
   compact?: boolean;
+  page?: number;
+  onPageChange?: (page: number) => void;
+  zoom?: number;
+  onZoomChange?: (zoom: number) => void;
+  sourceUrl?: string;
+  downloadUrl?: string;
 }) {
-  const [page, setPage] = useState(1);
+  const [localPage, setLocalPage] = useState(1);
+  const page = selectedPage ?? localPage;
+  const setPage = (value: number) => {
+    setLocalPage(value);
+    onPageChange?.(value);
+  };
   const [count, setCount] = useState(1);
-  const [zoom, setZoom] = useState(100);
+  const [localZoom, setLocalZoom] = useState(100);
+  const zoom = selectedZoom ?? localZoom;
+  const setZoom = (value: number) => {
+    setLocalZoom(value);
+    onZoomChange?.(value);
+  };
   const [failed, setFailed] = useState(false);
   useEffect(() => {
-    setPage(1);
+    setLocalPage(1);
     setCount(1);
-    setZoom(100);
+    setLocalZoom(100);
     setFailed(false);
   }, [asset?.id]);
   if (!asset)
@@ -266,7 +365,7 @@ export function AssetViewer({
         presentation needs review.
       </Empty>
     );
-  const url = assetUrl(caseId, asset.id);
+  const url = sourceUrl || assetUrl(caseId, asset.id);
   const image = ["image/png", "image/jpeg"].includes(asset.mime);
   const pdf = asset.mime === "application/pdf";
   return (
@@ -274,7 +373,7 @@ export function AssetViewer({
       <div className="viewer-toolbar">
         <span className="file-detail">
           {pdf ? <FileText size={15} /> : <Maximize2 size={15} />}
-          {pdf ? `Page ${page} of ${count}` : "Original creative"}
+          {pdf ? `Page ${Math.min(page, count)} of ${count}` : "Original file"}
         </span>
         <div className="viewer-tools">
           {pdf && (
@@ -283,7 +382,7 @@ export function AssetViewer({
                 className="icon-button"
                 aria-label="Previous page"
                 disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
+                onClick={() => setPage(page - 1)}
               >
                 <ChevronLeft size={16} />
               </button>
@@ -291,7 +390,7 @@ export function AssetViewer({
                 className="icon-button"
                 aria-label="Next page"
                 disabled={page >= count}
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => setPage(page + 1)}
               >
                 <ChevronRight size={16} />
               </button>
@@ -301,7 +400,7 @@ export function AssetViewer({
             className="icon-button"
             aria-label="Zoom out"
             disabled={zoom <= 50}
-            onClick={() => setZoom((z) => z - 25)}
+            onClick={() => setZoom(zoom - 25)}
           >
             <Minus size={15} />
           </button>
@@ -310,13 +409,13 @@ export function AssetViewer({
             className="icon-button"
             aria-label="Zoom in"
             disabled={zoom >= 200}
-            onClick={() => setZoom((z) => z + 25)}
+            onClick={() => setZoom(zoom + 25)}
           >
             <Plus size={15} />
           </button>
           <a
             className="icon-button"
-            href={assetUrl(caseId, asset.id, true)}
+            href={downloadUrl || assetUrl(caseId, asset.id, true)}
             aria-label={`Download ${asset.name}`}
           >
             <ArrowDownToLine size={16} />
