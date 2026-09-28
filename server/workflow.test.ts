@@ -26,6 +26,41 @@ const base: SubmissionInput = {
 };
 const approved = { type: 'decide', outcome: 'approved', scope: 'This exact creative and supplied destination for the named offer.', rationale: 'Reviewed the supplied creative and destination against the selected offer reference.', reviewed: true };
 
+test('sharing an earlier approval requires reconsidering its withdrawn reference', async t => {
+  const s = await setup(t);
+  let c = (await s.multipart('/api/cases', { ...base, fileRoles: ['creative'] }, [{ name: 'ad.png', bytes: png }])).body as ReviewCase;
+  c = (await s.action(c, { type: 'confirm_intake' })).body;
+  c = (await s.action(c, approved)).body;
+  const decision = structuredClone(c.decisions[0]);
+  const share = { type: 'publish_result', decisionId: decision.id, message: 'Approval for the recorded scope.' };
+  await s.json(`/api/offers/${offers[1].id}/withdraw`, { reason: 'Unrelated reference retired.' });
+  c = (await s.action(c, share)).body;
+  const withdrawn = (await s.json(`/api/offers/${decision.offerId}/withdraw`, { reason: 'Pricing under review.' })).body;
+  const before = structuredClone(c);
+  const blocked = await s.action(c, share);
+  assert.equal(blocked.status, 409);
+  assert.equal(blocked.body.code, 'reference_recheck_required');
+  assert.deepEqual((await s.json(`/api/cases/${c.id}`)).body, before);
+  const referenceRecheck = { offerId: withdrawn.id, withdrawnAt: withdrawn.withdrawnAt, reason: 'Confirmed with the offer owner: the withdrawal concerns a different placement; this exact scoped approval remains applicable.' };
+  assert.equal((await s.action(c, { ...share, referenceRecheck: { ...referenceRecheck, offerId: offers[1].id } })).status, 409);
+  assert.equal((await s.action(c, { ...share, referenceRecheck: { ...referenceRecheck, withdrawnAt: '2020-01-01T00:00:00.000Z' } })).status, 409);
+  assert.equal((await s.action(c, { ...share, referenceRecheck: { ...referenceRecheck, reason: ' ' } })).status, 400);
+  assert.equal((await s.action(c, { ...share, referenceRecheck, actorId: 'priya' })).status, 400);
+  const shared = await s.action(c, { ...share, referenceRecheck });
+  assert.equal(shared.status, 200);
+  c = shared.body;
+  assert.deepEqual(c.decisions[0], decision, 'The historical decision and its source snapshot are unchanged.');
+  assert.equal(c.publishedResults?.length, 2);
+  assert.ok(c.history.some(event => event.type === 'approval_reference_rechecked' && event.text.includes(referenceRecheck.reason) && event.text.includes(withdrawn.withdrawnAt)));
+  const external = await s.json(`/api/submissions/${c.submitterToken}`);
+  assert.equal(external.body.status, 'approved');
+  assert.ok(!JSON.stringify(external.body).includes(referenceRecheck.reason));
+  assert.ok(!JSON.stringify(external.body).includes('Pricing under review.'));
+  // Logging something already communicated must remain possible; it is not permission to send.
+  const communicated = await s.action(c, { type: 'record_communication', messageId: c.publishedResults![0].id, messageVersion: 1, recipient: 'Nina Patel', channel: 'Email', occurredAt: new Date().toISOString(), note: 'Recorded retrospectively.' });
+  assert.equal(communicated.status, 200);
+});
+
 async function setup(t: TestContext, seedDemo = false) {
   const dataDir = mkdtempSync(join(tmpdir(), 'clearpath-test-'));
   const app = createApp({ dataDir, seedDemo });

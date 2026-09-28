@@ -252,7 +252,7 @@ export type CaseAction = { expectedVersion: number; actorId?: string } & (
   | { type: "correct_contact"; title: string; submitter: string; submitterEmail: string; reason: string }
   | { type: "create_submitter_link" | "rotate_submitter_link" }
   | { type: "publish_feedback"; findingIds: string[]; subject: string; body: string; waiting?: { nextOwner: string; reason: string } }
-  | { type: "publish_result"; decisionId: string; message: string }
+  | { type: "publish_result"; decisionId: string; message: string; referenceRecheck?: { offerId: string; withdrawnAt: string; reason: string } }
   | { type: "record_communication"; messageId: string; messageVersion: number; recipient: string; occurredAt: string; channel: string; note: string }
   | { type: "add_response"; text: string; findingIds: string[] }
   | { type: "assess_response"; responseId: string; note: string; sharedMessage?: string }

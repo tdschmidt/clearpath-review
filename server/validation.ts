@@ -54,7 +54,7 @@ export const actionSchema = z.discriminatedUnion('type', [
   z.object({ ...version, type: z.literal('create_submitter_link') }).strict(),
   z.object({ ...version, type: z.literal('rotate_submitter_link') }).strict(),
   z.object({ ...version, type: z.literal('publish_feedback'), findingIds: z.array(required(120)).max(100), subject: required(300), body: required(20000), waiting: z.object({ nextOwner: required(120), reason: required(2000) }).strict().optional() }).strict(),
-  z.object({ ...version, type: z.literal('publish_result'), decisionId: required(120), message: required(20000) }).strict(),
+  z.object({ ...version, type: z.literal('publish_result'), decisionId: required(120), message: required(20000), referenceRecheck: z.object({ offerId: required(120), withdrawnAt: z.iso.datetime({ offset: true }), reason: required(3000) }).strict().optional() }).strict(),
   z.object({ ...version, type: z.literal('record_communication'), messageId: required(120), messageVersion: z.number().int().positive(), recipient: required(300), occurredAt: z.iso.datetime({ offset: true }), channel: required(120), note: text(3000) }).strict(),
   z.object({ ...version, type: z.literal('assess_response'), responseId: required(120), note: text(3000), sharedMessage: text(3000).optional() }).strict(),
   z.object({ ...version, type: z.literal('add_response'), text: required(5000), findingIds: z.array(required(120)).max(100) }).strict(),
