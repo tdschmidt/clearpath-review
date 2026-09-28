@@ -4,9 +4,13 @@
 
 **Status:** research and decision history accompanying the implemented application. The build and bounded API/browser workflow tests pass, including the review-record download; public deployment verification is being completed. See the [README](../README.md) for implementation status. Research evidence and software tests establish different things.
 
+The [audit resolution](audit-resolution.md) records the later implementation changes: separate submitter links, preserved references, deliberate sharing, reviewer recovery, and historical decisions. The research and earlier alternatives below explain the direction; they are not claims that deferred automation was built.
+
 **Selected direction:** an approval workspace with direct submissions and substantive human review. All three products share the workflow. V1 preserves original PNG/JPEG and PDF creative, findings, evidence requests, partial revisions, owners, scoped human decisions, and Prepared reply drafts. It includes no email import, live email, automated checks, AI, or OCR. The build budget is 8–12 focused hours within the original 24-hour assignment.
 
 **Reading guide:** the [product story](product-story.md) is the concise account of the problem, people, and decisions. The [workspace plan](approval-workspace-plan.md) is the current scope, and [submission-format findings](submission-format-research.md) explain the input boundary. Section 5 preserves earlier alternatives as decision history, not simultaneous V1 commitments. Email integration is the first V2 candidate; bounded checking follows only if it proves useful.
+
+The [automated-review decision](#decision-defer-automated-substantive-review) records why rules, Jev, and LLM assistance remain outside this project. [Detailed research](jev-ad-review-research.md) provides the supporting sources and a conditional future evaluation plan; it is not an implementation commitment.
 
 ## 1. Problem and decision criteria
 
@@ -83,7 +87,38 @@ The Intended use prompt explicitly invites relevant geography, affiliate, target
 
 The interface retains general review prompts. Expansion into a product-specific legal guide is deferred until primary sources, applicability, and current status have been checked. We did not adopt the external sample's unverified “80%” keyword-coverage claim, outdated consent assertions, or incorrect blanket APR formulations. None became an automated rule or a product accuracy claim.
 
-A portable review-record export was added after the core passed its workflow tests; its download now has browser coverage. The ZIP contains original files, version/context records, findings, decisions, timestamps, and captured decision snapshots where available. It excludes note records and reply drafts but includes internal reviewer reasoning, so it is not an external response. Missing historical snapshots are not reconstructed from current values. Portability helps retrieve reviewed material; it does not establish production audit controls, legal retention compliance, or tamper resistance.
+A portable review-record export was added after the core passed its workflow tests; its download now has browser coverage. The ZIP contains original files, version/context records, findings, decisions, timestamps, and captured decision snapshots where available. It excludes private note records and uncommunicated reply drafts but includes internal reviewer reasoning and manually communicated message versions, so it is not an external response. Missing historical snapshots are not reconstructed from current values. Portability helps retrieve reviewed material; it does not establish production audit controls, legal retention compliance, or tamper resistance.
+
+### Decision: defer automated substantive review
+
+**Status: decided for this project.** Keep human-authored findings and decisions. Do not add a compliance scanner, model integration, OCR pipeline, automated legal checklist, or AI rewriting to the submitted prototype. Existing upload validation, version checks, and unresolved-finding gates remain ordinary workflow controls. This is a choice about the project's objective and evidence, not a conclusion that AI is unsuitable for compliance.
+
+The research considered the following alternatives:
+
+| Approach | Plausible contribution | Why it is not selected here |
+|---|---|---|
+| Deterministic rules and keyword checks | Exact claims, dates, and known missing inputs; inexpensive, inspectable behavior | Correct matching still needs correct applicability, exceptions, source facts, and extraction. The ZIP's incorrect APR and trigger examples show that predictable code can produce wrong findings. |
+| Jev or another bounded classifier | Semantic claim labels, evidence relationships, revision classification | Requires evaluated questions, reliable text, and thresholds. Typed output does not establish correctness; the project has no measured ad-review performance. |
+| Generative LLM assistance | Candidate claim extraction, summaries of evidence, explanations, and draft corrections | Broader outputs increase the material a reviewer must verify. Suggested wording can change meaning or introduce unsupported terms. No candidate model has been evaluated on these packages. |
+| Retrieval with an LLM or classifier | Bring relevant legal passages and internal policies into the review | Retrieval requires a maintained, scoped source library. A real citation can still be inapplicable, outdated, or insufficient for the conclusion. |
+| Integration with a specialist compliance platform | Use an existing rule library and review capabilities | A real-company discovery exercise should examine this option. The assignment supplies no incumbent system, access, procurement constraints, or integration requirements. |
+| Human review in a versioned workspace — selected | Keep evidence, corrections, ownership, and decisions connected | Leaves substantive analysis manual, but directly addresses the stated Excel/email coordination problem within the implementation budget. |
+
+These are potential roles, not results of a model bake-off. A recent [Jev/LLM contract-inference study](https://arxiv.org/abs/2609.27678) found a cost/speed advantage for Jev and higher baseline accuracy for hosted LLMs in its tested configurations. It does not establish which approach wins on these ads. An earlier [legal-RAG evaluation](https://arxiv.org/abs/2405.20362) found errors despite retrieval; it is evidence against assuming citations guarantee accuracy, not a current failure rate for all LLMs. [Sedric's own description](https://www.sedric.ai/platforms/ai-technology) illustrates that AI-assisted compliance review exists commercially, without proving its suitability for ClearPath.
+
+**Why defer:**
+
+1. **Target the supported bottleneck.** Fragmented Excel/email approval is specified. Analysis effort, queue time, and outside-party waiting have not been measured separately. Automating analysis could improve the wrong step.
+2. **Budget for the whole feature.** Reliable extraction, evidence locations, source updates, error recovery, and evaluation take work beyond connecting an API. The 8–12-hour build budget prioritizes a complete revision and decision loop.
+3. **Account for both kinds of error.** False positives add verification and correction rounds; missed issues can create misplaced confidence. Retaining a human approver does not by itself make noisy suggestions useful.
+4. **Recognize the evidence gap.** Fictional offers and authored findings can exercise behavior but cannot establish detection quality across real ads. There is no representative, adjudicated evaluation set or demonstrated net time saving.
+5. **Preserve accountable decisions.** The product records who reviewed which material and why. A substantive automation feature would additionally need to expose inspected coverage, uncertainty, and its exact evidence basis before it could support that responsibility.
+
+**Consequences accepted:** reviewers still read claims, select requirements, create findings, and check corrections. V1 cannot claim automatic detection, fewer legal errors, or measured review-time reduction. The alternative has real potential value; deferring it spends the limited budget on a narrower, verifiable product promise.
+
+**What we do not know:** ClearPath may already have checklists, legal guidance, approved wording, or specialist software, but none is supplied. We do not attribute non-adoption to regulatory prohibition, reviewer resistance, or an already-solved analysis process. A real discovery phase would inspect representative review chains, existing controls, source ownership, and the reasons the team currently escalates work.
+
+**Revisit only with evidence:** establish that repeated analysis or evidence lookup is a material cost; obtain current offer/policy sources and a responsible owner; evaluate rules alone, rules plus a classifier, and LLM assistance on expert-labeled packages; include extraction, false-positive handling, consequential misses, and total reviewer time. Any future assistance would enter as inspectable suggestions. This is a reopening criterion, not part of this project's build plan.
 
 ## 5. Three candidate directions — decision history
 
