@@ -809,3 +809,17 @@ test('response attachments enter a review package only through an explicit revis
   const { offerId: _offerId, applicabilityReason: _applicability, ...publicRevision } = { submittedBy: base.submitter, summary: 'Do not adopt response through an unrelated retain request.', intendedUse: base.intendedUse, copy: base.copy, destinationUrl: '', fileRoles: [], retainedComponents: [{ assetId: creativeId, role: 'creative' }], expectedVersion: c.version, offerId: base.offerId, applicabilityReason: '' };
   assert.equal((await h.multipart(`/api/submissions/${receipt.token}/revisions`, publicRevision)).status, 400);
 });
+
+
+test('explicit response acknowledgment accepts an optional empty assessment note', async t => {
+  const h = await setup(t);
+  let c: ReviewCase = (await h.multipart('/api/cases', base)).body;
+  c = (await h.action(c, { type: 'add_response', text: 'A specialist supplied context.', findingIds: [], actorId: 'priya' })).body;
+  const result = await h.action(c, { type: 'assess_response', responseId: c.responses![0].id, note: '' });
+  assert.equal(result.status, 200);
+  c = result.body;
+  assert.equal(c.responses![0].assessment?.note, '');
+  assert.equal(c.responses![0].assessment?.by, REVIEWER);
+  assert.equal(pendingResponses(c).length, 0);
+  assert.equal(c.status, 'needs_intake');
+});
