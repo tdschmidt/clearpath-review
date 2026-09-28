@@ -192,6 +192,7 @@ export function ReviewWorkspace({
         setDecisionId(path[3]);
         setTab("decision");
       } else if (path[2] === "activity") setTab("activity");
+      else if (path[2] === "responses") setTab("drafts");
     };
     fromHash();
     window.addEventListener("hashchange", fromHash);
@@ -2679,8 +2680,8 @@ function CaseDetails({
           </select>
         </Field>
         <p className="small-muted">
-          Actions are recorded as {reviewerName || "Maya Chen"} in this demo.
-          No sign-in is required.
+          Actions are recorded as {reviewerName || "Maya Chen"} in this demo. No
+          sign-in is required.
         </p>
         <h3>Submitter return link</h3>
         <p>

@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { currentRevision } from '../shared/types.ts';
+import { currentRevision, pendingResponses } from '../shared/types.ts';
 import type { CaseAction, FindingInput, Offer, ReviewCase } from '../shared/types.ts';
 import { participant } from './references.ts';
 import { WorkflowError } from './store.ts';
@@ -83,10 +83,12 @@ export function applyHandoff(c: ReviewCase, action: CaseAction, actor: string, o
       const decision = c.decisions.find(item => item.id === action.decisionId);
       if (!decision) throw new WorkflowError(404, 'This decision was not found.');
       if (decision.withdrawn) throw new WorkflowError(409, 'This approval has been withdrawn.');
+      if (decision.revisionId !== revision.id) throw new WorkflowError(409, 'This decision belongs to an earlier package. Complete review of the current version before sharing a decision.', 'decision_not_current');
       const reference = offers.find(offer => offer.id === decision.offerId);
       if (decision.outcome === 'approved' && reference?.withdrawnAt) {
         throw new WorkflowError(409, 'The reference supporting this approval was withdrawn. Review a new revision with a current reference and record a new decision before sharing approval.', 'reference_recheck_required');
       }
+      if (decision.outcome === 'approved' && pendingResponses(c).length) throw new WorkflowError(409, 'New responses need assessment before this approval can be shared. If they change the decision, withdraw approval and resume review.', 'unassessed_responses');
       const reviewed = c.revisions.find(item => item.id === decision.revisionId)!;
       const assetIds = reviewed.components.filter(component => ['creative', 'destination'].includes(component.role)).map(component => component.assetId);
       const resultId = randomUUID();

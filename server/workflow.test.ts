@@ -26,6 +26,40 @@ const base: SubmissionInput = {
 };
 const approved = { type: 'decide', outcome: 'approved', scope: 'This exact creative and supplied destination for the named offer.', rationale: 'Reviewed the supplied creative and destination against the selected offer reference.', reviewed: true };
 
+test('pending responses interrupt approval and sharing without changing historical decisions', async t => {
+  const s = await setup(t);
+  let c: ReviewCase = (await s.multipart('/api/cases', base)).body;
+  c = (await s.action(c, { type: 'confirm_intake' })).body;
+  c = (await s.action(c, { type: 'create_submitter_link' })).body;
+  const beforeResponse = structuredClone(c);
+  const respond = async (text: string) => {
+    await s.multipart(`/api/submissions/${c.submitterToken}/responses`, { expectedVersion: c.version, submittedBy: 'Nina Patel', text, findingIds: [] });
+    c = (await s.json(`/api/cases/${c.id}`)).body;
+  };
+  await respond('The evidence supplied earlier was for another offer.');
+  assert.equal(pendingResponses(c).length, 1);
+  assert.equal((await s.action(beforeResponse, approved)).status, 409, 'An arriving answer invalidates a stale decision form.');
+  assert.equal((await s.action(c, approved)).body.code, 'unassessed_responses');
+  c = (await s.action(c, { type: 'assess_response', responseId: c.responses![0].id, note: 'Checked the package against the correct offer.' })).body;
+  c = (await s.action(c, approved)).body;
+  const decision = structuredClone(c.decisions[0]);
+  const share = { type: 'publish_result', decisionId: decision.id, message: 'Approval for the recorded scope.' };
+  const beforeLateResponse = structuredClone(c);
+  await respond('Please check one more clarification before sending this.');
+  assert.equal((await s.action(beforeLateResponse, share)).status, 409);
+  assert.equal((await s.action(c, share)).body.code, 'unassessed_responses');
+  assert.deepEqual(c.decisions[0], decision, 'Receiving evidence never rewrites or automatically revokes a human decision.');
+  c = (await s.action(c, { type: 'assess_response', responseId: c.responses!.at(-1)!.id, note: 'Considered the clarification; the recorded scope and decision still apply.' })).body;
+  c = (await s.action(c, share)).body;
+  assert.equal(c.publishedResults?.length, 1);
+  c = (await s.revise(c, { copy: 'A new version needing review.' })).body;
+  assert.equal((await s.action(c, share)).body.code, 'decision_not_current', 'Earlier decisions remain readable but cannot be published as a new handoff.');
+  await respond('Additional evidence for the new version.');
+  c = (await s.action(c, { ...approved, outcome: 'rejected', rationale: 'The submitted material cannot proceed.' })).body;
+  assert.equal(pendingResponses(c).length, 1, 'Rejection does not imply assessment.');
+  assert.equal((await s.action(c, { ...share, decisionId: c.decisions.at(-1)!.id })).status, 200, 'A rejection remains communicable.');
+});
+
 test('a withdrawn reference requires fresh review before another approval can be shared', async t => {
   const s = await setup(t);
   let c = (await s.multipart('/api/cases', { ...base, fileRoles: ['creative'] }, [{ name: 'ad.png', bytes: png }])).body as ReviewCase;

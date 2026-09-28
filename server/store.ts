@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
-import { REVIEWER, currentRevision, openBlockers } from '../shared/types.ts';
+import { REVIEWER, currentRevision, openBlockers, pendingResponses } from '../shared/types.ts';
 import type { Asset, CaseAction, Offer, PackageRevision, ReviewCase, RevisionInput, SubmissionInput } from '../shared/types.ts';
 
 import { applyHandoff, validateFinding } from './handoffs.ts';
@@ -317,6 +317,7 @@ export class WorkflowStore {
             this.validateApplicability(revision.offerId, c.launchDate, revision.applicabilityReason || '');
             if (c.confirmedRevisionId !== revision.id || !action.reviewed || !action.scope.trim()) throw new WorkflowError(400, 'Approval requires confirmed intake, completed review, and a decision scope.', 'approval_requirements');
             if (openBlockers(c).length) throw new WorkflowError(409, 'Material findings still need resolution or recheck.', 'unresolved_findings');
+            if (pendingResponses(c).length) throw new WorkflowError(409, 'Assess all received responses before recording approval. Assessment does not resolve findings.', 'unassessed_responses');
           } else if (!action.rationale.trim()) throw new WorkflowError(400, 'Provide a reason for rejecting this revision.');
           const offer = this.offers.find(item => item.id === revision.offerId);
           c.decisions.push({ id: id(), outcome: action.outcome, reviewer: actor.name, revisionId: revision.id, offerId: revision.offerId, scope: action.scope, rationale: action.rationale, createdAt: now(), findingSnapshot: structuredClone(c.findings), ...(offer ? { offerSnapshot: structuredClone(offer) } : {}) });

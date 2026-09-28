@@ -2,6 +2,7 @@ import { FileText } from "lucide-react";
 import { useState } from "react";
 import {
   assetUrl,
+  currentRevision,
   PARTICIPANTS,
   type ReviewCase,
   type SubmissionResponse,
@@ -123,6 +124,19 @@ export function ResponseThread({
                   dismiss findings separately; any acknowledgment entered above
                   is shared with the submitter.
                 </p>
+                {review.decisions.some(
+                  (decision) =>
+                    decision.outcome === "approved" &&
+                    !decision.withdrawn &&
+                    decision.revisionId === currentRevision(review).id,
+                ) && (
+                  <p className="rw-warning">
+                    An approval is already recorded. Check whether this response
+                    changes its basis or scope. If it does, withdraw approval
+                    from the decision record and resume review before sharing it
+                    again.
+                  </p>
+                )}
                 <ErrorMessage error={error} />
                 <button className="button secondary" disabled={saving}>
                   Record response assessment

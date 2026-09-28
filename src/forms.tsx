@@ -23,6 +23,7 @@ import {
   currentRevision,
   assetUrl,
   openBlockers,
+  pendingResponses,
   PRODUCT_LABELS,
   REVIEWER,
   ROLE_LABELS,
@@ -1120,6 +1121,7 @@ export function DecisionForm({
 }: ActionProps) {
   const rev = currentRevision(review),
     blockers = openBlockers(review),
+    responses = pendingResponses(review),
     confirmed = review.confirmedRevisionId === rev.id;
   const [outcome, setOutcome] = useState<"approved" | "rejected">("approved");
   const draftKey = `decision/${review.id}/`;
@@ -1129,7 +1131,9 @@ export function DecisionForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => setReviewed(false), [review.version]);
-  const blocked = outcome === "approved" && (!confirmed || blockers.length > 0);
+  const blocked =
+    outcome === "approved" &&
+    (!confirmed || blockers.length > 0 || responses.length > 0);
   return (
     <Modal
       title="Record your decision"
@@ -1194,6 +1198,29 @@ export function DecisionForm({
                     {f.needsRecheck ? " (recheck needed)" : ""}
                   </p>
                 ))}
+                {responses.length > 0 && (
+                  <>
+                    <p>
+                      Assess {responses.length} received response
+                      {responses.length === 1 ? "" : "s"} before approval.
+                    </p>
+                    {responses.map((response) => (
+                      <p key={response.id}>
+                        {response.author} · {response.text}
+                      </p>
+                    ))}
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => {
+                        onClose();
+                        window.location.hash = `review/${review.id}/responses`;
+                      }}
+                    >
+                      Review received responses
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -1320,6 +1347,8 @@ export function DraftForm({
   const decision = review.decisions.findLast(
     (d) => d.revisionId === rev.id && !d.withdrawn,
   );
+  const unassessed =
+    decision?.outcome === "approved" ? pendingResponses(review) : [];
   const withdrawnReference =
     decision?.outcome === "approved"
       ? offers.find(
@@ -1387,6 +1416,12 @@ export function DraftForm({
     if (contextChanged) {
       setError(
         "The package or decision changed. Review and confirm the message against the current context before saving or sharing.",
+      );
+      return;
+    }
+    if (action.type === "publish_result" && unassessed.length) {
+      setError(
+        "Assess received responses before sharing approval. If they change the decision, withdraw approval and resume review.",
       );
       return;
     }
@@ -1479,6 +1514,30 @@ export function DraftForm({
                 I checked the message against the current context
               </button>
             </div>
+          )}
+          {unassessed.length > 0 && (
+            <section
+              className="rw-warning"
+              aria-label="Responses need assessment"
+            >
+              <strong>New responses need review before sharing approval</strong>
+              <p>
+                {unassessed.length} response
+                {unassessed.length === 1 ? " is" : "s are"} unassessed. Check
+                whether the recorded decision still applies. If it changes,
+                withdraw approval and resume review.
+              </p>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => {
+                  onClose();
+                  window.location.hash = `review/${review.id}/responses`;
+                }}
+              >
+                Review received responses
+              </button>
+            </section>
           )}
           {withdrawnReference && decision && (
             <section
@@ -1660,7 +1719,12 @@ export function DraftForm({
                 <button
                   type="button"
                   className="button secondary"
-                  disabled={busy || !reconciled || !!withdrawnReference}
+                  disabled={
+                    busy ||
+                    !reconciled ||
+                    !!withdrawnReference ||
+                    unassessed.length > 0
+                  }
                   onClick={() =>
                     void run({
                       type: "publish_result",
