@@ -28,6 +28,6 @@ export function submitterView(c: ReviewCase): SubmitterCase {
     })) })),
     results: results.map(item => ({ ...item, assetIds: item.assetIds.filter(assetId => allowed.has(assetId)) })),
     responses: (c.responses || []).filter(response => response.audience === 'submitter').map(response => ({ ...response, assetIds: response.assetIds.filter(assetId => allowed.has(assetId)) })),
-    ...(c.cancelled ? { cancellationReason: c.cancelled.reason } : {}),
+    ...(c.cancelled ? { cancellationReason: 'This submission has been cancelled. Contact the review team if you need to submit a new package.' } : {}),
   };
 }

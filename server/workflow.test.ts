@@ -540,8 +540,11 @@ test('shared decisions contain exact deliverables, withdrawals supersede them wi
   external = (await h.json(`/api/submissions/${c.submitterToken}`)).body;
   assert.equal(external.status, 'withdrawn');
   assert.equal(JSON.stringify(external).includes('Private withdrawal basis sentinel'), false);
-  c = (await h.action(c, { type: 'cancel', reason: 'Campaign cancelled by submitter.' })).body;
+  c = (await h.action(c, { type: 'cancel', reason: 'Private cancellation basis sentinel' })).body;
   assert.equal(c.status, 'cancelled');
+  external = (await h.json(`/api/submissions/${c.submitterToken}`)).body;
+  assert.equal(external.status, 'cancelled');
+  assert.equal(JSON.stringify(external).includes('Private cancellation basis sentinel'), false);
   assert.equal((await h.revise(c)).status, 409);
 });
 
@@ -569,4 +572,25 @@ test('reference retries preserve one version and archives include source origina
   assert.deepEqual(Buffer.from(entries[source.archivePath]), destination);
   assert.equal(record.case.drafts, undefined);
   assert.deepEqual(record.assetManifest[0].offerIds, [first.body.id]);
+});
+
+
+test('historical material citations stay editable and reference sources cannot cross cases', async t => {
+  const h = await setup(t);
+  let c: ReviewCase = (await h.multipart('/api/cases', { ...base, fileRoles: ['creative'] }, [{ name: 'ad.png', bytes: png }])).body;
+  const oldAsset = c.assets[0].id;
+  const oldRevision = currentRevision(c).id;
+  const finding = { kind: 'correction', title: 'Fee claim', detail: 'The offer includes a fee.', request: 'Revise the claim.', location: 'Headline', assetId: oldAsset, owner: base.submitter, material: true, citations: [{ revisionId: oldRevision, assetId: oldAsset, page: 1 }] };
+  c = (await h.action(c, { type: 'add_finding', finding })).body;
+  c = (await h.revise(c, { retainedComponents: [], fileRoles: ['creative'], replacements: [oldAsset] }, [{ name: 'ad.png', bytes: revisedPng }])).body;
+  const revised = await h.action(c, { type: 'edit_finding', findingId: c.findings[0].id, finding: { ...finding, request: 'Check the new version against this old claim.' } });
+  assert.equal(revised.status, 200);
+  c = revised.body;
+  assert.equal(c.findings[0].citations?.[0].revisionId, oldRevision);
+  assert.equal(c.findings[0].assetId, oldAsset);
+  const second: ReviewCase = (await h.multipart('/api/cases', { ...base, fileRoles: ['creative'] }, [{ name: 'other.png', bytes: png }])).body;
+  assert.equal((await h.action(c, { type: 'add_finding', finding: { ...finding, citations: [{ revisionId: currentRevision(second).id, assetId: second.assets[0].id }] } })).status, 400);
+  assert.equal((await h.action(c, { type: 'add_finding', finding: { ...finding, sourceCitations: [{ offerId: base.offerId, assetId: second.assets[0].id, page: 1 }] } })).status, 400);
+  const reference = h.app.locals.store.offers.find((offer: { id: string }) => offer.id === base.offerId);
+  assert.equal((await h.action(c, { type: 'add_finding', finding: { ...finding, sourceCitations: [reference.facts[0].citation] } })).status, 200);
 });
