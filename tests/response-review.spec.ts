@@ -362,7 +362,7 @@ test("a recorded approval stays actionable until its exact saved decision messag
   });
   await communication
     .getByRole("combobox", { name: "Message", exact: true })
-    .selectOption(draft.id);
+    .selectOption(`${draft.id}:${draft.version || 1}`);
   await communication
     .getByLabel("Recipient", { exact: true })
     .fill("morgan@example.com");
@@ -399,4 +399,213 @@ test("a recorded approval stays actionable until its exact saved decision messag
   await expect(
     page.getByRole("link", { name: title, exact: true }),
   ).toBeVisible();
+});
+
+test("a communication conflict preserves the selected earlier message and its original decision binding", async ({
+  page,
+}) => {
+  const { review } = await createReview(
+    page.request,
+    "Exact message version after conflict",
+  );
+  const approved = await internalAction(page.request, review.id, {
+    type: "decide",
+    outcome: "approved",
+    scope: "Version 1 social image and caption for the named placement.",
+    rationale: "Completed human review of the fictional material and source.",
+    reviewed: true,
+  });
+  const decision = approved.decisions.at(-1)!;
+  const originalBody =
+    "The version 1 package is approved for the recorded scope. Submit any changes for review.";
+  const prepared = await internalAction(page.request, review.id, {
+    type: "save_draft",
+    subject: "Original decision message",
+    body: originalBody,
+    decisionId: decision.id,
+  });
+  const draft = prepared.drafts.at(-1)!;
+  await page.goto(`/#review/${review.id}`);
+  await page
+    .getByRole("tab", { name: "Feedback & replies", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Record communication", exact: true })
+    .click();
+  const modal = page.getByRole("dialog", {
+    name: "Record outside communication",
+    exact: true,
+  });
+  const selection = modal.getByRole("combobox", {
+    name: "Message",
+    exact: true,
+  });
+  await selection.selectOption(`${draft.id}:1`);
+  await modal.getByText("Message text", { exact: true }).click();
+  await expect(modal.getByText(originalBody, { exact: true })).toBeVisible();
+
+  const replacementBody =
+    "Administrative follow-up only. This message does not communicate the decision.";
+  await internalAction(page.request, review.id, {
+    type: "save_draft",
+    draftId: draft.id,
+    subject: "Later unrelated message",
+    body: replacementBody,
+  });
+  const conflict = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/cases/${review.id}/actions`) &&
+      response.request().method() === "POST",
+  );
+  await modal
+    .getByRole("button", { name: "Record communication", exact: true })
+    .click();
+  expect((await conflict).status()).toBe(409);
+  await expect(modal.getByRole("alert")).toBeVisible();
+  await expect(selection).toHaveValue(`${draft.id}:1`);
+  await expect(selection.locator("option:checked")).toHaveText(
+    /Earlier draft: Original decision message.*message version 1/,
+  );
+  await expect(modal.getByText(originalBody, { exact: true })).toBeVisible();
+  await expect(modal.getByText(replacementBody, { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(
+    modal.getByText("This exact message is linked to a recorded decision.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  expect(
+    (await getReview(page.request, review.id)).communications || [],
+  ).toEqual([]);
+
+  const recorded = await browserAction(page, review.id, () =>
+    modal
+      .getByRole("button", { name: "Record communication", exact: true })
+      .click(),
+  );
+  expect(recorded.communications).toHaveLength(1);
+  expect(recorded.communications![0]).toMatchObject({
+    messageId: draft.id,
+    messageVersion: 1,
+    decisionId: decision.id,
+  });
+  expect(recorded.drafts[0]).toMatchObject({
+    version: 2,
+    body: replacementBody,
+  });
+  expect(recorded.drafts[0].decisionId).toBeUndefined();
+  expect(recorded.drafts[0].previousVersions?.[0]).toMatchObject({
+    version: 1,
+    body: originalBody,
+    decisionId: decision.id,
+  });
+  await page.goto("/#queue");
+  await expect(
+    page.getByRole("link", { name: review.title, exact: true }),
+  ).toHaveCount(0);
+});
+
+test("an unsaved decision reply requires reconciliation after a concurrent decision replacement", async ({
+  page,
+}) => {
+  const { review } = await createReview(
+    page.request,
+    "Retained unsaved reply after decision replacement",
+  );
+  const first = await internalAction(page.request, review.id, {
+    type: "decide",
+    outcome: "approved",
+    scope: "Version 1 for the originally recorded social placement.",
+    rationale: "Original fictional approval basis.",
+    reviewed: true,
+  });
+  await page.goto(`/#review/${review.id}`);
+  await page
+    .getByRole("tab", { name: "Feedback & replies", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Prepare reply", exact: true })
+    .click();
+  const modal = page.getByRole("dialog", {
+    name: "Prepare a reply",
+    exact: true,
+  });
+  const unsavedBody =
+    "Unsent wording prepared for the original decision and scope. Keep this draft while the review changes.";
+  await modal
+    .getByLabel("Subject", { exact: true })
+    .fill("Unfinished original decision reply");
+  await modal
+    .getByRole("textbox", { name: "Message", exact: true })
+    .fill(unsavedBody);
+  const decisionBinding = modal.getByRole("checkbox", {
+    name: /^This message communicates the recorded decision/,
+  });
+  await decisionBinding.check();
+  await internalAction(page.request, review.id, {
+    type: "withdraw_approval",
+    decisionId: first.decisions.at(-1)!.id,
+    reason:
+      "The original approval scope needs correction before communication.",
+  });
+  await internalAction(page.request, review.id, { type: "confirm_intake" });
+  const replacement = await internalAction(page.request, review.id, {
+    type: "decide",
+    outcome: "approved",
+    scope: "Version 1 for the corrected, narrower California placement only.",
+    rationale: "Rereviewed and corrected the approval scope after withdrawal.",
+    reviewed: true,
+  });
+  const replacementDecision = replacement.decisions.at(-1)!;
+  const conflict = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/cases/${review.id}/actions`) &&
+      response.request().method() === "POST",
+  );
+  await modal.getByRole("button", { name: "Save draft", exact: true }).click();
+  expect((await conflict).status()).toBe(409);
+  await expect(
+    modal.getByText(
+      "The package or recorded decision changed while this message was open.",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await expect(
+    modal.getByRole("textbox", { name: "Message", exact: true }),
+  ).toHaveValue(unsavedBody);
+  await expect(
+    modal.getByText(replacementDecision.scope, { exact: true }),
+  ).toBeVisible();
+  expect((await getReview(page.request, review.id)).drafts).toEqual([]);
+
+  // A second click must not attach the retained words to the replacement decision.
+  await modal.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(modal.getByRole("alert")).toContainText(
+    "Review and confirm the message against the current context",
+  );
+  expect((await getReview(page.request, review.id)).drafts).toEqual([]);
+  await modal
+    .getByRole("button", {
+      name: "I checked the message against the current context",
+      exact: true,
+    })
+    .click();
+  await expect(
+    modal.getByRole("textbox", { name: "Message", exact: true }),
+  ).toHaveValue(unsavedBody);
+  await expect(decisionBinding).not.toBeChecked();
+  const saved = await browserAction(page, review.id, () =>
+    modal.getByRole("button", { name: "Save draft", exact: true }).click(),
+  );
+  expect(saved.drafts).toHaveLength(1);
+  expect(saved.drafts[0].body).toBe(unsavedBody);
+  expect(saved.drafts[0].decisionId).toBeUndefined();
+  expect(saved.decisions).toEqual(replacement.decisions);
+  expect(saved.publishedResults || []).toEqual([]);
+  await page.goto("/#queue");
+  const queueRow = page.getByRole("row").filter({
+    has: page.getByRole("link", { name: review.title, exact: true }),
+  });
+  await expect(queueRow).toContainText("Communicate recorded decision");
 });
