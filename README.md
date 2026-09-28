@@ -14,6 +14,8 @@ The [audit resolution](docs/audit-resolution.md) separates working features from
 
 The latest [approval-sharing decision](docs/approval-sharing-decision.md) explains why a withdrawn source requires fresh review before another approval can be shared. The [compliance-review follow-up](docs/compliance-review-follow-up.md) covers the card example's required disclosure finding and clearer scope prompts. [Further findings](docs/focused-follow-up-findings.md) distinguish reproduced gaps from proposed product additions; those recommendations are not implemented features.
 
+The [final workflow audit](docs/final-workflow-audit.md) records the completed browser walkthrough, the corrected reference PDF preview, remaining workflow defects, and full-product limitations. Passing tests do not imply those remaining gaps are fixed.
+
 ## Current scope
 
 Affiliates submit through `/submit` and keep a case return link. Reviewers choose a preserved offer reference, inspect material beside facts and findings, share selected feedback, and reconcile partial revisions. Returned evidence creates review attention and can be inspected beside the creative. Responses never close findings automatically. Decisions identify an exact package and scope; outstanding communication remains actionable until the result is deliberately shared or outside communication of an exact decision message is recorded. Old decisions and withdrawals remain inspectable.
