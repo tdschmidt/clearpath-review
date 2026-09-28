@@ -929,3 +929,21 @@
     width: 36px;
   }
 }
+.pdf-page-input {
+  width: 45px;
+  height: 30px;
+  padding: 3px;
+  border: 1px solid #d9e1d2;
+  border-radius: 4px;
+  background: white;
+  font-size: 12px;
+  text-align: center;
+}
+.rw-facts-body {
+  max-height: 230px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.rw-facts-body.expanded {
+  max-height: none;
+}

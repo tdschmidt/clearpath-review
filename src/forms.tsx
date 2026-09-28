@@ -664,8 +664,15 @@ export function SubmissionForm({
 }
 
 export function WaitingForm({ review, onAction, onClose }: ActionProps) {
-  const [owner, setOwner] = useState(review.nextOwner || review.submitter);
-  const [reason, setReason] = useState(review.waitingReason || "");
+  const draftKey = `waiting/${review.id}/`;
+  const [owner, setOwner] = useDraftState(
+    draftKey + "owner",
+    review.nextOwner || review.submitter,
+  );
+  const [reason, setReason] = useDraftState(
+    draftKey + "reason",
+    review.waitingReason || "",
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
@@ -681,6 +688,7 @@ export function WaitingForm({ review, onAction, onClose }: ActionProps) {
           setBusy(true);
           try {
             await onAction({ type: "set_waiting", nextOwner: owner, reason });
+            clearDrafts(draftKey);
             onClose();
           } catch (e) {
             setError((e as Error).message);
@@ -716,6 +724,17 @@ export function WaitingForm({ review, onAction, onClose }: ActionProps) {
             disabled={busy}
           >
             Cancel
+          </button>
+          <button
+            type="button"
+            className="text-button"
+            disabled={busy}
+            onClick={() => {
+              clearDrafts(draftKey);
+              onClose();
+            }}
+          >
+            Discard draft
           </button>
           <Submit busy={busy}>Mark waiting</Submit>
         </footer>

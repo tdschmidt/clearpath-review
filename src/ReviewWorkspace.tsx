@@ -724,9 +724,13 @@ function PackageMaterial({
   onLocation: (value: Location) => void;
   compact?: boolean;
 }) {
-  const components = revision.components.filter((c) => c.role !== "excluded");
-  const selected =
-    components.find((c) => c.assetId === location.assetId) || components[0];
+  const components = revision.components.filter(
+    (c) => c.role !== "excluded" || c.assetId === location.assetId,
+  );
+  const selected = location.assetId
+    ? components.find((c) => c.assetId === location.assetId)
+    : components[0];
+  const missingReference = Boolean(location.assetId && !selected);
   const asset = review.assets.find((a) => a.id === selected?.assetId);
   return (
     <>
@@ -735,7 +739,7 @@ function PackageMaterial({
           <label>
             File
             <select
-              value={selected?.assetId || ""}
+              value={location.assetId || selected?.assetId || ""}
               onChange={(e) =>
                 onLocation({
                   ...location,
@@ -746,6 +750,11 @@ function PackageMaterial({
                 })
               }
             >
+              {missingReference && (
+                <option value={location.assetId}>
+                  Referenced file is not in this version
+                </option>
+              )}
               {components.map((c) => (
                 <option key={c.assetId} value={c.assetId}>
                   {review.assets.find((a) => a.id === c.assetId)?.name} ·{" "}
@@ -756,15 +765,27 @@ function PackageMaterial({
           </label>
         </div>
       )}
-      <AssetViewer
-        caseId={review.id}
-        asset={asset}
-        compact={compact}
-        page={location.page}
-        onPageChange={(page) => onLocation({ ...location, page })}
-        zoom={location.zoom}
-        onZoomChange={(zoom) => onLocation({ ...location, zoom })}
-      />
+      {selected?.role === "excluded" && (
+        <p className="rw-warning">
+          This file was not included in this version’s review.
+        </p>
+      )}
+      {missingReference ? (
+        <Empty title="Referenced file is not in this version">
+          Choose a file or version above. No other original has been
+          substituted.
+        </Empty>
+      ) : (
+        <AssetViewer
+          caseId={review.id}
+          asset={asset}
+          compact={compact}
+          page={location.page}
+          onPageChange={(page) => onLocation({ ...location, page })}
+          zoom={location.zoom}
+          onZoomChange={(zoom) => onLocation({ ...location, zoom })}
+        />
+      )}
       <div className="rw-material-context">
         <h3>Accompanying copy</h3>
         <p className="preserve-lines">
@@ -808,6 +829,7 @@ function OfferFacts({
   intendedUse: string;
   onSource: (source: SourceCitation) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   return (
     <section className="panel rw-facts">
       <header className="panel-header">
@@ -819,8 +841,20 @@ function OfferFacts({
               : "No reference selected"}
           </p>
         </div>
+        <button
+          className="text-button"
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Collapse" : "Expand"}
+        </button>
       </header>
-      <div className="rw-facts-body">
+      <div
+        className={`rw-facts-body ${expanded ? "expanded" : ""}`}
+        role="region"
+        aria-label="Offer facts and intended use"
+        tabIndex={0}
+      >
         <p className="rw-intended">
           <strong>Intended use</strong>
           {intendedUse || "Not supplied"}
@@ -932,7 +966,9 @@ function FindingCard({
             {review.assets.find((a) => a.id === citation.assetId)?.name ||
               "Material"}
             {citation.page ? ` · p. ${citation.page}` : ""}
-            {citation.note ? ` · ${citation.note}` : ""}
+            {citation.note || (i === 0 && f.location)
+              ? ` · ${citation.note || f.location}`
+              : ""}
           </button>
         ))}
         {f.sourceCitations?.map((citation, i) => (
@@ -1072,10 +1108,21 @@ function FindingEditor({
           : [],
         sourceCitations: [],
       };
-  const [data, setData] = useDraftState(key, initial);
-  const [reason, setReason] = useDraftState(`${key}/reason`, "");
+  const [data, setData] = useDraftState<
+    FindingInput & { draftBaseVersion?: number }
+  >(key, { ...initial, draftBaseVersion: review.version });
+  const [reasonDraft, setReasonDraft] = useDraftState<
+    string | { text: string; baseVersion: number }
+  >(`${key}/reason`, { text: "", baseVersion: review.version });
+  const reason =
+    typeof reasonDraft === "string" ? reasonDraft : reasonDraft.text;
+  const reasonVersion =
+    typeof reasonDraft === "string" ? -1 : reasonDraft.baseVersion;
+  const setReason = (text: string) =>
+    setReasonDraft({ text, baseVersion: reasonVersion });
   const [error, setError] = useState("");
-  const [baseline, setBaseline] = useState(review.version);
+  const baseline =
+    editor.mode === "disposition" ? reasonVersion : data.draftBaseVersion;
   const changed = baseline !== review.version;
   const set = <K extends keyof FindingInput>(
     field: K,
@@ -1094,6 +1141,7 @@ function FindingEditor({
       );
       return;
     }
+    const { draftBaseVersion: _draftVersion, ...findingInput } = data;
     const action: ActionInput =
       editor.mode === "disposition"
         ? {
@@ -1106,9 +1154,9 @@ function FindingEditor({
           ? {
               type: "edit_finding",
               findingId: editor.finding.id,
-              finding: data,
+              finding: findingInput,
             }
-          : { type: "add_finding", finding: data };
+          : { type: "add_finding", finding: findingInput };
     if (await onAction(action)) {
       clearDrafts(key);
       onClose();
@@ -1386,7 +1434,16 @@ function FindingEditor({
                 type="button"
                 className="text-button"
                 onClick={() => {
-                  setBaseline(review.version);
+                  if (editor.mode === "disposition")
+                    setReasonDraft({
+                      text: reason,
+                      baseVersion: review.version,
+                    });
+                  else
+                    setData((old) => ({
+                      ...old,
+                      draftBaseVersion: review.version,
+                    }));
                   setError("");
                 }}
               >
@@ -1683,14 +1740,20 @@ function VersionComparison({
             <div className="rw-material-context">
               <h3>Review context</h3>
               <p>
-                {offers.find((o) => o.id === revision.offerId)?.name ||
-                  "No offer reference"}
+                {(() => {
+                  const reference = offers.find(
+                    (o) => o.id === revision.offerId,
+                  );
+                  return reference
+                    ? `${reference.name} · ${reference.version}`
+                    : "No offer reference";
+                })()}
               </p>
               <p>{revision.intendedUse || "No intended use supplied"}</p>
               <p>
                 {revision.channel || review.channel} ·{" "}
-                {revision.launchDate || review.launchDate
-                  ? date(revision.launchDate || review.launchDate)
+                {(revision.launchDate ?? review.launchDate)
+                  ? date(revision.launchDate ?? review.launchDate)
                   : "No launch date"}
               </p>
               <h3>Revision note</h3>

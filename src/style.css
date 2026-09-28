@@ -2939,3 +2939,7 @@ main:has(.case-page) {
 .review-table .next-action { white-space: normal; overflow: visible; text-overflow: clip; max-width: 280px; }
 .review-table .table-sub { white-space: normal; }
 button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #176a59; outline-offset: 3px; }
+
+.case-open main { padding: 0; }
+.reviewer select, .topbar-actor select { max-width: 185px; border: 1px solid #d5ded8; border-radius: 4px; padding: 6px; background: white; font-size: 12px; }
+.topbar-actor { font-size: 12px; display: flex; align-items: center; gap: 8px; }

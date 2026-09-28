@@ -229,6 +229,14 @@ function PdfPage({
 
   useEffect(() => {
     if (!document) return;
+    if (!Number.isInteger(page) || page < 1 || page > document.numPages) {
+      setLoading(false);
+      setError(
+        `Page ${page} is unavailable. This PDF has ${document.numPages} page${document.numPages === 1 ? "" : "s"}. Choose an available page or download the original.`,
+      );
+      textContainer.current?.replaceChildren();
+      return;
+    }
     let cancelled = false;
     let render: { cancel: () => void; promise: Promise<unknown> } | undefined;
     let textLayer: PDFTextLayer | undefined;
@@ -236,7 +244,7 @@ function PdfPage({
     setLoading(true);
     setError("");
     void document
-      .getPage(Math.min(Math.max(1, page), document.numPages))
+      .getPage(page)
       .then(async (pdfPage) => {
         if (
           cancelled ||
@@ -373,11 +381,23 @@ export function AssetViewer({
       <div className="viewer-toolbar">
         <span className="file-detail">
           {pdf ? <FileText size={15} /> : <Maximize2 size={15} />}
-          {pdf ? `Page ${Math.min(page, count)} of ${count}` : "Original file"}
+          {pdf ? `Page ${page} of ${count}` : "Original file"}
         </span>
         <div className="viewer-tools">
           {pdf && (
             <>
+              <input
+                className="pdf-page-input"
+                type="number"
+                min={1}
+                max={count}
+                aria-label={`Page number for ${asset.name}`}
+                value={page}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  if (Number.isInteger(next) && next >= 1) setPage(next);
+                }}
+              />
               <button
                 className="icon-button"
                 aria-label="Previous page"
