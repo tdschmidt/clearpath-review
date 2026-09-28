@@ -25,3 +25,9 @@ coverage/
 __pycache__/
 *.pyc
 *.log
+
+# Local application records, uploaded files, and browser test output
+/data/
+/test-results/
+/playwright-report/
+/.cache/

@@ -1,0 +1,42 @@
+{
+  "name": "clearpath-review",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.0 <25"
+  },
+  "scripts": {
+    "dev": "concurrently -k \"tsx watch server/index.ts\" \"vite --host 127.0.0.1\"",
+    "build": "tsc --noEmit && vite build",
+    "start": "tsx server/index.ts",
+    "test": "tsx --test server/*.test.ts",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "fflate": "^0.8.3",
+    "lucide-react": "^0.468.0",
+    "multer": "^2.0.2",
+    "pdfjs-dist": "^5.4.149",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/express": "^5.0.3",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.0",
+    "prettier": "^3.9.9",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.0"
+  }
+}

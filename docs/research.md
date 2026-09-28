@@ -2,9 +2,11 @@
 
 **Research date:** September 27, 2026.
 
-**Status:** product discovery; no application implemented.
+**Status:** research and decision history accompanying the implemented application. The build and bounded API/browser workflow tests pass, including the review-record download; public deployment verification is being completed. See the [README](../README.md) for implementation status. Research evidence and software tests establish different things.
 
-**Current recommendation:** a Revision and Approval Inbox with a bounded compliance review layer. This is a recommendation, not a completed scope or a claim of measured impact.
+**Selected direction:** an approval workspace with direct submissions and substantive human review. All three products share the workflow. V1 preserves original PNG/JPEG and PDF creative, findings, evidence requests, partial revisions, owners, scoped human decisions, and Prepared reply drafts. It includes no email import, live email, automated checks, AI, or OCR. The build budget is 8–12 focused hours within the original 24-hour assignment.
+
+**Reading guide:** the [product story](product-story.md) is the concise account of the problem, people, and decisions. The [workspace plan](approval-workspace-plan.md) is the current scope, and [submission-format findings](submission-format-research.md) explain the input boundary. Section 5 preserves earlier alternatives as decision history, not simultaneous V1 commitments. Email integration is the first V2 candidate; bounded checking follows only if it proves useful.
 
 ## 1. Problem and decision criteria
 
@@ -17,12 +19,12 @@ The key question is therefore **which work inside approval should the product re
 The project discussion establishes these design constraints:
 
 - An interactive URL and GitHub repository are the eventual deliverables.
-- The implementation is a 24-hour prototype, with free services preferred throughout.
+- The original assignment is a 24-hour prototype; the selected implementation budget is 8–12 hours, using free tools.
 - Critical user interactions should work completely, and the implementation should be explainable.
 - Less consequential production features can be deliberately omitted.
 - AI, a particular stack, and coverage of every product or channel are not specified requirements.
 
-These constraints favor a small complete workflow. They do not establish a preference for any of the product directions below. Hosting that works with the developer's computer off is preferred; local hosting through ngrok is an accepted fallback. No hosting choice is made here.
+These constraints favor a small complete workflow. They do not establish a preference for any of the product directions below. Local hosting through ngrok is acceptable. Deployment and verification status belong in the [README](../README.md); this research is not evidence of a live deployment.
 
 ## 2. Evidence and its limits
 
@@ -65,7 +67,7 @@ An illustrative case makes the distinction between analysis and coordination con
 |---|---|---|
 | Which offer and context apply? | Creative refers to a promotion with different dates or fees from the standard offer. | Require or confirm the matching offer/version and intended usage. |
 | Does the claim match the facts? | An explicit “no origination fee” claim conflicts with a mandatory fee. | Show the exact claim and authoritative fact; missing facts remain unknown. |
-| Does this statement trigger further disclosures? | A covered closed-end ad states a repayment period or payment amount. | Apply a scoped rule and check the relevant information; do not apply one checklist to every product. |
+| Does this statement trigger further disclosures? | A covered closed-end ad states a repayment period or payment amount. | Let the reviewer record the relevant rule and evidence question; do not apply one automatic checklist to every product. |
 | Does the promise match the customer journey? | Wording implies final approval or unconditional same-day funding. | Compare with the actual operational process and request evidence where needed. |
 | Is the evidence adequate? | A savings or performance claim needs support. | Record the evidence question and its owner; an assertion is not its own proof. |
 | Does the presentation communicate the qualification? | A disclosure exists in text but is cropped or obscured in the rendered creative. | Inspect the actual rendition; extracted text alone cannot settle this. |
@@ -73,9 +75,19 @@ An illustrative case makes the distinction between analysis and coordination con
 
 For covered closed-end credit, [Regulation Z §1026.24](https://www.consumerfinance.gov/rules-policy/regulations/1026/24/) addresses available terms, rate statements, conditional disclosure triggers, and presentation. Open-end advertising uses a different provision, [§1026.16](https://www.consumerfinance.gov/rules-policy/regulations/1026/16/). This is why product classification matters before running a check. The [FTC substantiation policy](https://www.ftc.gov/legal-library/browse/ftc-policy-statement-regarding-advertising-substantiation) provides a basis for examining support for objective claims.
 
-A prototype can assist a small, explicit subset. It should not invent financial terms, calculate APR without a defined model, infer that every ad needs the same disclosure, or treat “no automated findings” as a legal clearance. A reviewer should be able to inspect the claim, supporting fact, source, and requested action without reconstructing the system's reasoning elsewhere.
+V1 assists these judgments by keeping creative, context, human findings, and evidence together. It performs no automatic legal checks. Any later automation should not invent financial terms, calculate APR without a defined model, infer that every ad needs the same disclosure, or treat “no automated findings” as legal clearance. A reviewer should be able to inspect the claim, supporting fact, source, and requested action in the same record. Legal and supervisory sources inform these design choices; they do not mandate this software workflow.
 
-## 5. Three candidate directions
+### Small refinements carried into implementation
+
+The Intended use prompt explicitly invites relevant geography, affiliate, targeting, and compensation context, including what remains unknown. These details can affect a human review; they are not a mandatory national field list. The resulting context is versioned with the package so later changes do not silently alter the basis of earlier decisions.
+
+The interface retains general review prompts. Expansion into a product-specific legal guide is deferred until primary sources, applicability, and current status have been checked. We did not adopt the external sample's unverified “80%” keyword-coverage claim, outdated consent assertions, or incorrect blanket APR formulations. None became an automated rule or a product accuracy claim.
+
+A portable review-record export was added after the core passed its workflow tests; its download now has browser coverage. The ZIP contains original files, version/context records, findings, decisions, timestamps, and captured decision snapshots where available. It excludes note records and reply drafts but includes internal reviewer reasoning, so it is not an external response. Missing historical snapshots are not reconstructed from current values. Portability helps retrieve reviewed material; it does not establish production audit controls, legal retention compliance, or tamper resistance.
+
+## 5. Three candidate directions — decision history
+
+These alternatives were explored before the current V1 was fixed. Their example prototypes include capabilities that are now deferred. They explain the choice of workflow focus, not the current implementation checklist.
 
 ### A. Compliance Review Desk
 
@@ -151,36 +163,36 @@ A prototype can assist a small, explicit subset. It should not invent financial 
 
 This ranking concerns **fit to the stated operating problem**, not proven ROI or the evaluator's preferred answer. The earlier Review Desk recommendation emphasized substantive analysis and demonstrable legal reasoning. Focusing explicitly on the Excel/email clue shifts the recommendation to the Inbox.
 
-The proposed direction is **workflow as the product, supported by a small amount of grounded compliance checking**. This is not a proposal to combine all three full products. Basic evidence checks help the reviewer perform the Inbox's core job; a broad scanner and campaign builder remain out of scope.
+The selected direction is **workflow as the product, supporting substantive human review**. It does not combine all three full products. Human findings tied to claims and evidence, partial correction handling, and explicit decisions distinguish the workspace from a generic tracker. A broad scanner and campaign builder remain out of scope; even narrow automatic checks are deferred until their usefulness is established.
 
-## 7. Recommended prototype boundary
+## 7. Selected prototype boundary
 
-Propose one covered unsecured, closed-end personal-loan offer family, fictional authoritative facts, and one text-based landing-page creative with a supplied rendition. Show the offer and review scope. Cards, mortgage-specific obligations, applications/prescreening, arbitrary media, and complete state-law coverage are outside this prototype's claimed checks. Unsupported inputs should have a visible boundary or manual route.
+Support one shared human workflow for personal loans, credit cards, and mortgage prequalification. Preserve original PNG/JPEG and multipage PDF creative, accompanying copy, destination proof, and fictional offer context. Other formats are retained for manual download; a supported rendition may still be needed for review. There are no automated compliance checks, AI, or OCR. Supporting all three product categories in a workflow does not imply automated coverage of their obligations or national legal certification.
 
 Core workflow:
 
-1. An internal marketer submits directly, or a partner manager imports/pastes an affiliate message and associates the creative.
+1. An internal marketer submits directly, or a partner manager enters context and uploads creative received outside the app. Email messages are not imported.
 2. The reviewer confirms the case, offer, and current version; missing context receives a named next action.
-3. One or two explicit fact checks and a short reviewer checklist support the review. Findings distinguish a demonstrated conflict from a question needing evidence.
+3. The reviewer creates findings and evidence requests grounded in the creative. A supported concern stays distinct from a question awaiting evidence.
 4. The reviewer prepares an editable correction request from confirmed findings.
-5. A revision preserves the prior version, shows changes, and requires explicit disposition of outstanding concerns. Changes outside flagged passages remain visible.
-6. The reviewer makes a saved decision on the intended version and context. A reply draft identifies the approved or rejected material in terms the submitter can recognize.
+5. A partial revision preserves the prior package and unchanged components. The reviewer inspects the changed material and explicitly disposes of outstanding concerns; no semantic or visual diff is promised.
+6. The reviewer makes a saved decision on the intended version and context. A reply draft identifies the material in terms the submitter can recognize. Its status is Prepared, never Sent.
 
-The workspace should replace Excel for these supported cases. Requiring staff to update Excel as well would risk introducing a third system. Export for reporting could be added later if needed; it is not a reason to preserve duplicate manual status entry.
+The workspace should replace Excel for these supported cases. Requiring staff to update Excel as well would risk introducing a third system. The review-record export supports retrieval, not duplicate manual status entry or a separate reporting dashboard.
 
-### Email now versus later
+### Why email is deferred, not dismissed
 
 | Choice | What it demonstrates | Cost or limitation |
 |---|---|---|
-| Central internal form | Structured intake and complete internal review | Partner managers still enter emailed material; affiliate effort should not be hidden. |
-| Imported/pasted correspondence | Source preservation, revision association, reconciliation, and useful reply drafts | Does not demonstrate automatic capture, mailbox synchronization, or delivery. |
-| Live email integration | Actual transport and potential removal of manual import | Adds credential/provider setup, deduplication, failure handling, and correspondence-state complexity. |
+| Direct submission — selected V1 | Structured intake, original creative, complete human review and draft preparation | Partner managers still enter material received elsewhere and transfer replies. Count that work. |
+| Email import — deferred | Could preserve correspondence and assist revision association | Does not provide automatic capture, mailbox synchronization, or delivery. |
+| Live email integration — first V2 candidate | Could remove manual transport and preserve affiliates' existing channel | Adds provider setup, deduplication, attachment acquisition, association recovery, and honest communication states. |
 
-Automatic email intake can be v2. That is a deliberate boundary, but it narrows the efficiency claim. The v1 experiment must count copying and reply-transfer effort. An imported message is not a live inbox, a saved decision is not a sent response, and provider acceptance would not establish receipt.
+The settled V1 has neither email import nor live inbound/outbound integration. This narrows the efficiency claim. Count direct-entry and reply-transfer effort when evaluating it. A saved decision is not a sent response, and even a future provider acceptance would not establish receipt. Affiliates are not required to adopt a portal; an internal coordinator can submit on their behalf.
 
 ### What to cut first
 
-Cut broad format support, advanced routing, extensive dashboards, live email, open-ended rewriting, all-state legal automation, enterprise identity, and continuous affiliate monitoring before cutting persistence, exact-version decisions, actionable findings, or the complete correction loop. No paid model or legal database is necessary for the bounded demonstration. Any AI use must earn its place by reducing a named task and remain grounded in supplied facts and curated sources.
+Cut broad format support, advanced routing, extensive dashboards, email integration, all automatic checking, open-ended rewriting, enterprise identity, and continuous affiliate monitoring before cutting persistence, original creative, exact-version decisions, actionable findings, or the correction loop. V1 uses no AI or OCR. After email, narrow fee comparison, APR-location assistance, and repayment-disclosure lookup are possible follow-ups only if they reduce a demonstrated task and remain grounded in reliable evidence.
 
 ## 8. Consequential acceptance cases
 
@@ -188,17 +200,17 @@ These cases define the proposed product's quality bar; they are not claims of co
 
 | Case | Required behavior |
 |---|---|
-| Same claim, different offer facts | A contradiction, no contradiction for that check, and unavailable evidence remain distinct outcomes. |
+| Concern versus evidence request | The reviewer can distinguish a supported concern from a question awaiting information, with its owner and basis. |
 | Partial correction | One finding can be resolved while another stays open with an owner and next action. |
 | Reused filename | New content becomes a separate revision; filename equality is not content identity. |
 | Changed offer/context | Unchanged words do not inherit an approval whose factual basis no longer matches. |
-| Duplicate or ambiguous import | Avoid duplicate cases where identity is known; request human association where it is not. |
+| Failed upload or unsupported preview | Identify failures; preserve other-format originals for manual download without implying they were inspected or approved. |
 | Stale action | An action against an older revision cannot silently approve the latest one. |
-| Failed or incomplete analysis | Failure, missing rendition, or unsupported content cannot appear as a clean completed check. |
-| External communication | Internal notes stay out of drafts; a submitter's “approved” wording cannot grant internal approval. |
+| Missing evidence | Record the unresolved dependency and next action rather than manufacturing a favorable finding. |
+| External communication | Internal notes stay out of Prepared drafts; saving a reply cannot imply that it was sent. |
 | Reload | Findings, versions, dispositions, and the saved decision remain retrievable. |
 
-For a 24-hour build, choose a narrow input envelope and implement visible manual recovery beyond it. Comprehensive support for every email or legal edge case is not required to make the selected path dependable.
+For the selected 8–12-hour build, preserve realistic visual input within an explicit envelope and provide visible recovery beyond it. Comprehensive support for every communication or legal edge case is not required to make the chosen human review path dependable.
 
 ## 9. Measuring whether the product helps
 
@@ -207,7 +219,7 @@ Compare matched fictional cases in the reconstructed email/Excel process and the
 Measure separately:
 
 - Active reviewer minutes and evidence lookups per supported decision.
-- Coordinator/import effort and submitter effort.
+- Coordinator entry/reply-transfer effort and submitter effort.
 - Waiting on reviewers versus waiting on other people.
 - Correction rounds and time spent reconstructing prior work.
 - Missed seeded concerns, unsupported findings, and incorrect-version decisions.
@@ -217,12 +229,12 @@ Count unique submissions reaching supported decisions; do not count every scan o
 
 No numeric improvement is assumed. Authored fixtures can demonstrate bounded behavior, not production legal accuracy or a causal real-world throughput claim.
 
-## 10. Open decisions and assumptions to defend
+## 10. Assumptions to validate after the selected scope
 
-1. Whether revision and coordination effort is the most useful fictional bottleneck to make explicit, or whether first-pass analysis should lead instead.
-2. Whether the proposed personal-loan/landing-page slice offers the clearest complete demonstration.
-3. Whether direct intake or imported correspondence is sufficient for v1; live email remains optional.
-4. Which bounded checks are worth automating and which judgments remain explicitly manual.
-5. The remaining implementation time, free runtime, persistence design, and deployment approach.
+1. Revision reconstruction and coordination consume enough effort to justify the workspace.
+2. Staff can replace the supported Excel queue instead of maintaining both systems.
+3. The benefit exceeds direct-entry and reply-transfer effort before email integration exists.
+4. PNG/JPEG and PDF proofs cover enough realistic work to make the chosen input boundary useful.
+5. Human findings and scoped decisions are valuable before any automatic checks are introduced.
 
-The highest-value real-company validation would be a completed review chain, a revision-heavy chain, their tracker rows, the product facts used, and the applicable approval policy. Because ClearPath is fictional, the prototype can proceed with stated assumptions once scope is selected. Public research supports a realistic process; it does not substitute for measurements that do not exist.
+The highest-value real-company validation would be a completed review chain, a revision-heavy chain, their tracker rows, the product facts used, and the applicable approval policy. ClearPath is fictional, so implementation proceeds with these stated assumptions. Public research supports a realistic process; it does not substitute for measurements that do not exist. Current implementation and test status are recorded separately in the [README](../README.md).

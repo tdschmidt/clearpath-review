@@ -1,0 +1,62 @@
+{
+  "public/fixtures/card/social-ad.png": {
+    "name": "social-ad.png",
+    "mime": "image/png",
+    "size": 58687,
+    "sha256": "3696359094fcd1c3bdf8a98a1344bc6d397a6c6c6d0c013c65eeefb00a485806"
+  },
+  "public/fixtures/loan/v1/social-ad.png": {
+    "name": "social-ad.png",
+    "mime": "image/png",
+    "size": 73325,
+    "sha256": "2f05d5bd8ad81834ea88034133b87462719ec2f5ed5758787cab043b575a23f3"
+  },
+  "public/fixtures/loan/v2/social-ad.png": {
+    "name": "social-ad.png",
+    "mime": "image/png",
+    "size": 74651,
+    "sha256": "b8993efa0f6cbbb705c09ce4eb21a72b99ee7a8773eadaa9f91e36b6db130985"
+  },
+  "public/fixtures/loan/v3/destination.pdf": {
+    "name": "destination.pdf",
+    "mime": "application/pdf",
+    "size": 93723,
+    "sha256": "c7630de225afe6a5f51c3b7a44516b13e24c3ff85337ce545aa4888a1a9d430c"
+  },
+  "public/fixtures/loan/v3/social-ad.png": {
+    "name": "social-ad.png",
+    "mime": "image/png",
+    "size": 74651,
+    "sha256": "b8993efa0f6cbbb705c09ce4eb21a72b99ee7a8773eadaa9f91e36b6db130985"
+  },
+  "public/fixtures/mortgage/social-ad.jpg": {
+    "name": "social-ad.jpg",
+    "mime": "image/jpeg",
+    "size": 171637,
+    "sha256": "b1e9421080f8c9507c74772669381febf5091bc2b8ccf94fe14e94c8e6aeb625"
+  },
+  "public/fixtures/offers/credit-card.pdf": {
+    "name": "credit-card.pdf",
+    "mime": "application/pdf",
+    "size": 92414,
+    "sha256": "94551003fd82426b24fcaa4df7906fd90591141621bdb0d47ea3a7d2dda9a013"
+  },
+  "public/fixtures/offers/mortgage.pdf": {
+    "name": "mortgage.pdf",
+    "mime": "application/pdf",
+    "size": 92401,
+    "sha256": "30c0391bfca06dd9115d41bcb42997ee7b4a990a34ece7054ca336b1faaa9885"
+  },
+  "public/fixtures/offers/personal-loan.pdf": {
+    "name": "personal-loan.pdf",
+    "mime": "application/pdf",
+    "size": 92489,
+    "sha256": "18e1d2bba1432f6eedc4e12aecb0f426a4af3847fc03c7fbabe900b02797db08"
+  },
+  "public/fixtures/unsupported-evidence.txt": {
+    "name": "unsupported-evidence.txt",
+    "mime": "text/plain",
+    "size": 246,
+    "sha256": "3190e09a9dfb45567e84a06dc3fe6d9e9982addb2ec74e2e0fab9de84991395a"
+  }
+}
