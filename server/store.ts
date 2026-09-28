@@ -197,9 +197,9 @@ export class WorkflowStore {
         offerId: input.offerId, intendedUse: input.intendedUse, copy: input.copy, destinationUrl: input.destinationUrl,
         components: [...retained, ...assets.map((asset, i) => ({ assetId: asset.id, role: input.fileRoles[i], ...(replacements[i] ? { replacesAssetId: replacements[i]! } : {}) }))],
         product: input.product || c.product, channel: input.channel ?? c.channel, launchDate: input.launchDate ?? c.launchDate,
-        advertisedOffer: input.advertisedOffer ?? previous.advertisedOffer ?? '', applicabilityReason: input.applicabilityReason || '',
+        advertisedOffer: input.advertisedOffer ?? previous.advertisedOffer ?? '', applicabilityReason: input.applicabilityReason ?? previous.applicabilityReason ?? '',
       };
-      const context = (r: PackageRevision) => JSON.stringify([r.offerId, r.intendedUse, r.copy, r.destinationUrl, r.product, r.channel, r.launchDate, r.advertisedOffer]);
+      const context = (r: PackageRevision) => JSON.stringify([r.offerId, r.intendedUse, r.copy, r.destinationUrl, r.product, r.channel, r.launchDate, r.advertisedOffer, r.applicabilityReason || '']);
       const allAssets = new Map([...c.assets, ...assets].map(asset => [asset.id, asset]));
       const materials = (r: PackageRevision, creativeOnly = false) => r.components
         .filter(component => creativeOnly ? component.role === 'creative' : component.role !== 'excluded')

@@ -823,3 +823,24 @@ test('explicit response acknowledgment accepts an optional empty assessment note
   assert.equal(pendingResponses(c).length, 0);
   assert.equal(c.status, 'needs_intake');
 });
+
+
+test('revisions preserve an omitted applicability basis and recheck explicit changes or removal', async t => {
+  const h = await setup(t);
+  let c: ReviewCase = (await h.multipart('/api/cases', base)).body;
+  c = (await h.action(c, { type: 'confirm_intake', applicabilityReason: 'Original applicability explanation.' })).body;
+  c = (await h.action(c, { type: 'add_finding', finding: { kind: 'question', title: 'Reference applicability', detail: 'Review against the stated basis.', request: 'Confirm applicability.', location: 'Context', assetId: '', owner: REVIEWER, material: true } })).body;
+  c = (await h.action(c, { type: 'disposition', findingId: c.findings[0].id, status: 'resolved', reason: 'Original applicability basis reviewed.' })).body;
+  c = (await h.revise(c, { applicabilityReason: undefined })).body;
+  assert.equal(currentRevision(c).applicabilityReason, 'Original applicability explanation.');
+  assert.notEqual(c.findings[0].needsRecheck, true);
+  c = (await h.revise(c, { applicabilityReason: 'A changed applicability explanation.' })).body;
+  assert.equal(c.findings[0].needsRecheck, true);
+  assert.equal(c.revisions[0].applicabilityReason, 'Original applicability explanation.');
+  c = (await h.action(c, { type: 'confirm_intake' })).body;
+  assert.equal((await h.action(c, approved)).body.code, 'unresolved_findings');
+  c = (await h.action(c, { type: 'disposition', findingId: c.findings[0].id, status: 'resolved', reason: 'Changed basis reviewed.' })).body;
+  c = (await h.revise(c, { applicabilityReason: '' })).body;
+  assert.equal(currentRevision(c).applicabilityReason, '');
+  assert.equal(c.findings[0].needsRecheck, true);
+});
