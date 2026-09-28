@@ -43,7 +43,7 @@
 }
 
 .review-workspace {
-  padding: 24px 30px 48px;
+  padding: 16px 26px 40px;
   max-width: 1920px;
   margin: 0 auto;
   width: 100%;
@@ -154,7 +154,7 @@
   font-size: 13px;
 }
 .rw-heading .back-link {
-  margin-bottom: 15px;
+  margin-bottom: 8px;
 }
 .rw-title-line {
   display: flex;
@@ -184,7 +184,7 @@
   background: #edf2eb;
   border: 1px solid #dce5d8;
   border-radius: 7px;
-  margin: 18px 0;
+  margin: 12px 0;
 }
 .rw-next > div {
   flex: 1;
@@ -203,7 +203,7 @@
   align-items: center;
   gap: 20px;
   border-bottom: 1px solid #dce3d8;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   overflow-x: auto;
 }
 .rw-tabs > button {

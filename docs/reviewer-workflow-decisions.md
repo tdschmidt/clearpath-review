@@ -19,3 +19,7 @@ The queue now includes a recorded decision with an unfinished handoff and names 
 This preserves the useful separation between an internal judgment and its external communication. It removes a hidden task without requiring automatic publication, email integration, or a new approval stage. Creating a return link is included in deliberate sharing rather than requiring a separate setup action.
 
 Communication records select an immutable message ID and version, including earlier saved versions. A refresh cannot silently change the message claimed to have been sent. Unfinished reply drafts are scoped to their package and decision; reusing a saved draft from an earlier decision requires an explicit check. These details matter because a faithful communication record must describe the text actually used.
+
+## Prioritize the material and consequential fields
+
+The review and queue headers use less vertical space, leaving more of the working material visible. Finding classification is optional detail; audience, the concern and basis, requested action, owner, and required/advisory status remain prominent because they affect who does what and what can block a decision. This is a small refinement of the existing layout, not a visual redesign.

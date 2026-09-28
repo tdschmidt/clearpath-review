@@ -1467,18 +1467,6 @@ function FindingEditor({
           ) : (
             <>
               <div className="form-grid">
-                <Field label="Type">
-                  <select
-                    value={data.kind}
-                    onChange={(e) =>
-                      set("kind", e.target.value as FindingInput["kind"])
-                    }
-                  >
-                    <option value="correction">Correction</option>
-                    <option value="evidence">Evidence request</option>
-                    <option value="question">Specialist question</option>
-                  </select>
-                </Field>
                 <Field label="Audience">
                   <select
                     value={data.audience || "internal"}
@@ -1658,6 +1646,21 @@ function FindingEditor({
                   ))}
                 </datalist>
               </Field>
+              <details>
+                <summary>Optional classification</summary>
+                <Field label="Type">
+                  <select
+                    value={data.kind}
+                    onChange={(e) =>
+                      set("kind", e.target.value as FindingInput["kind"])
+                    }
+                  >
+                    <option value="correction">Correction</option>
+                    <option value="evidence">Evidence request</option>
+                    <option value="question">Specialist question</option>
+                  </select>
+                </Field>
+              </details>
               <label className="check-line">
                 <input
                   type="checkbox"

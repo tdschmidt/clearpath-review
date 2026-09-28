@@ -96,6 +96,7 @@ async function addFinding(
 ) {
   await page.getByRole("button", { name: "Add finding", exact: true }).click();
   const dialog = page.locator(".rw-editor");
+  await dialog.getByText("Optional classification", { exact: true }).click();
   await dialog
     .getByRole("combobox", { name: "Type", exact: true })
     .selectOption(finding.kind);
