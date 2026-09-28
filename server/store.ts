@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { REVIEWER, currentRevision, openBlockers } from '../shared/types.ts';
@@ -143,8 +143,8 @@ export class WorkflowStore {
       });
     } catch (error) { written.forEach(path => rmSync(path, { force: true })); throw error; }
   }
-  submit(input: SubmissionInput, files: Upload[], key?: string) {
-    return this.request('submission', key, input, files, written => {
+  submit(input: SubmissionInput, files: Upload[], key?: string, external = false) {
+    return this.request(external ? 'external-submission' : 'submission', key, input, files, written => {
       this.validateOffer(input.offerId, input.product);
       this.validatePackage(input, files);
       const at = now();
@@ -153,6 +153,8 @@ export class WorkflowStore {
         id: id(), number: 1, createdAt: at, submittedBy: input.submittedBy, summary: input.summary,
         offerId: input.offerId, intendedUse: input.intendedUse, copy: input.copy, destinationUrl: input.destinationUrl,
         components: assets.map((asset, i) => ({ assetId: asset.id, role: input.fileRoles[i] })),
+        product: input.product, channel: input.channel, launchDate: input.launchDate, advertisedOffer: input.advertisedOffer || '',
+        applicabilityReason: input.applicabilityReason || '',
       };
       const c: ReviewCase = {
         id: id(), reference: '', title: input.title, product: input.product, submitter: input.submitter,
@@ -160,27 +162,36 @@ export class WorkflowStore {
         owner: REVIEWER, nextOwner: REVIEWER, waitingReason: '', status: 'needs_intake', version: 1,
         createdAt: at, updatedAt: at, example: false, confirmedRevisionId: null,
         assets, revisions: [revision], findings: [], notes: [], decisions: [], drafts: [], history: [],
+        publishedFeedback: [], publishedResults: [], responses: [], communications: [],
+        submitterAssetIds: external ? assets.map(asset => asset.id) : [],
+        ...(external ? { submitterToken: randomBytes(24).toString('base64url') } : {}),
       };
       this.event(c, 'submitted', 'Submission received. Awaiting intake.', input.submittedBy);
       return this.insert(c);
     });
   }
-  revise(caseId: string, input: RevisionInput & { expectedVersion: number }, files: Upload[], key?: string) {
+  revise(caseId: string, input: RevisionInput & { expectedVersion: number }, files: Upload[], key?: string, external = false) {
     return this.request(`revision:${caseId}`, key, input, files, written => {
       const c = this.get(caseId);
       this.version(c, input.expectedVersion);
-      this.validateOffer(input.offerId, c.product);
+      if (c.cancelled) throw new WorkflowError(409, 'This submission has been cancelled. Start a new submission.');
+      this.validateOffer(input.offerId, input.product || c.product);
       const retained = input.retainedComponents;
       if (new Set(retained.map(component => component.assetId)).size !== retained.length || retained.some(component => !c.assets.some(asset => asset.id === component.assetId))) throw new WorkflowError(400, 'Retained attachments must be unique assets from this case.');
       this.validatePackage(input, files, retained);
+      const replacements = input.replacements || files.map(() => null);
+      if (replacements.length !== files.length || replacements.filter(Boolean).some(assetId => !currentRevision(c).components.some(component => component.assetId === assetId)) || new Set(replacements.filter(Boolean)).size !== replacements.filter(Boolean).length) throw new WorkflowError(400, 'Choose a different current attachment for each replacement.');
+      if (replacements.some(assetId => assetId && retained.some(component => component.assetId === assetId))) throw new WorkflowError(400, 'A replaced attachment must not also be retained.');
       const assets = this.writeAssets(files, written);
       const previous = currentRevision(c);
       const revision: PackageRevision = {
         id: id(), number: previous.number + 1, createdAt: now(), submittedBy: input.submittedBy, summary: input.summary,
         offerId: input.offerId, intendedUse: input.intendedUse, copy: input.copy, destinationUrl: input.destinationUrl,
-        components: [...retained, ...assets.map((asset, i) => ({ assetId: asset.id, role: input.fileRoles[i] }))],
+        components: [...retained, ...assets.map((asset, i) => ({ assetId: asset.id, role: input.fileRoles[i], ...(replacements[i] ? { replacesAssetId: replacements[i]! } : {}) }))],
+        product: input.product || c.product, channel: input.channel ?? c.channel, launchDate: input.launchDate ?? c.launchDate,
+        advertisedOffer: input.advertisedOffer ?? previous.advertisedOffer ?? '', applicabilityReason: input.applicabilityReason || '',
       };
-      const context = (r: PackageRevision) => JSON.stringify([r.offerId, r.intendedUse, r.copy, r.destinationUrl]);
+      const context = (r: PackageRevision) => JSON.stringify([r.offerId, r.intendedUse, r.copy, r.destinationUrl, r.product, r.channel, r.launchDate, r.advertisedOffer]);
       const allAssets = new Map([...c.assets, ...assets].map(asset => [asset.id, asset]));
       const materials = (r: PackageRevision, creativeOnly = false) => r.components
         .filter(component => creativeOnly ? component.role === 'creative' : component.role !== 'excluded')
@@ -202,6 +213,8 @@ export class WorkflowStore {
         if (contextChanged || creativeChanged || !baselineRetained) finding.needsRecheck = true;
       });
       c.assets.push(...assets);
+      if (external) c.submitterAssetIds = [...(c.submitterAssetIds || []), ...assets.map(asset => asset.id)];
+      c.product = revision.product!; c.channel = revision.channel!; c.launchDate = revision.launchDate!;
       c.revisions.push(revision);
       c.confirmedRevisionId = null;
       c.status = 'needs_intake';
@@ -273,6 +286,28 @@ export class WorkflowStore {
       return this.save(c, action.expectedVersion);
     });
   }
+  getByToken(token: string): ReviewCase {
+    if (!/^[A-Za-z0-9_-]{32}$/.test(token)) throw new WorkflowError(404, 'This submission link was not found.', 'not_found');
+    const row = this.db.prepare("SELECT data FROM cases WHERE json_extract(data, '$.submitterToken')=?").get(token);
+    if (!row) throw new WorkflowError(404, 'This submission link was not found or has been replaced.', 'not_found');
+    return JSON.parse(row.data as string);
+  }
+  respond(token: string, input: { expectedVersion: number; submittedBy: string; text: string; findingIds: string[] }, files: Upload[], key?: string) {
+    const found = this.getByToken(token);
+    return this.request(`response:${found.id}`, key, input, files, written => {
+      const c = this.getByToken(token);
+      this.version(c, input.expectedVersion);
+      const published = new Set((c.publishedFeedback || []).flatMap(feedback => feedback.findings.map(finding => finding.id)));
+      if (input.findingIds.some(findingId => !published.has(findingId))) throw new WorkflowError(400, 'Respond only to requests shared on this submission.');
+      if (files.reduce((size, file) => size + file.buffer.length, 0) > 25 * 1024 * 1024) throw new WorkflowError(413, 'Response attachments must total 25 MB or less.');
+      const assets = this.writeAssets(files, written);
+      c.assets.push(...assets); c.submitterAssetIds = [...(c.submitterAssetIds || []), ...assets.map(asset => asset.id)];
+      c.responses ??= [];
+      c.responses.push({ id: id(), author: input.submittedBy, createdAt: now(), text: input.text, findingIds: [...new Set(input.findingIds)], assetIds: assets.map(asset => asset.id), revisionId: currentRevision(c).id, audience: 'submitter' });
+      this.event(c, 'response_received', 'A submitter response was received. Findings still require reviewer disposition.', input.submittedBy);
+      return this.save(c, input.expectedVersion);
+    });
+  }
   seed() {
     if (!this.db.prepare('SELECT 1 FROM cases LIMIT 1').get()) this.examples.forEach(example => this.freshExample(example.key));
   }
@@ -287,7 +322,7 @@ export class WorkflowStore {
       const revisionIds = new Map(c.revisions.map(revision => [revision.id, id()]));
       c.id = id(); c.version = 1; c.example = true; c.createdAt = now(); c.updatedAt = c.createdAt;
       c.assets = assets;
-      c.revisions.forEach(revision => { revision.id = revisionIds.get(revision.id)!; revision.components.forEach(component => { component.assetId = assetIds.get(component.assetId)!; }); });
+      c.revisions.forEach(revision => { revision.product ??= c.product; revision.channel ??= c.channel; revision.launchDate ??= c.launchDate; revision.contextInherited = true; revision.id = revisionIds.get(revision.id)!; revision.components.forEach(component => { component.assetId = assetIds.get(component.assetId)!; }); });
       c.confirmedRevisionId = c.confirmedRevisionId ? revisionIds.get(c.confirmedRevisionId)! : null;
       c.findings.forEach(finding => { finding.id = id(); finding.assetId = assetIds.get(finding.assetId) || ''; finding.revisionId = revisionIds.get(finding.revisionId)!; if (finding.disposition) finding.disposition.revisionId = revisionIds.get(finding.disposition.revisionId)!; });
       c.notes.forEach(note => { note.id = id(); });

@@ -58,7 +58,7 @@ async function setup(t: TestContext, seedDemo = false) {
   });
   // Only user-editable revision input is sent; IDs and timestamps remain server-owned.
   const revise = (c: ReviewCase, changes: object = {}, files: FileInput[] = [], key?: string) => {
-    const { id: _id, number: _number, createdAt: _createdAt, components: _components, ...input } = revision(c, changes);
+    const { id: _id, number: _number, createdAt: _createdAt, components: _components, contextInherited: _inherited, ...input } = revision(c, changes);
     return multipart(`/api/cases/${c.id}/revisions`, input, files, key);
   };
   return { app, dataDir, url, json, multipart, action, revise };
@@ -419,4 +419,49 @@ test('legacy migration backs up records and preserves original IDs and bytes wit
     c.assets.forEach(asset => assert.equal(createHash('sha256').update(readFileSync(join(h.dataDir, 'assets', asset.id))).digest('hex'), asset.sha256));
   }
   migrated.close();
+});
+
+test('submitter receipt and return links expose only submitted material and cannot cross case boundaries', async t => {
+  const h = await setup(t);
+  const { offerId: _offerId, ...publicInput } = base;
+  const first = await h.multipart('/api/submissions', { ...publicInput, advertisedOffer: 'Fall personal loan', fileRoles: ['creative'] }, [{ name: 'ad.png', bytes: png }], 'first-public');
+  assert.equal(first.status, 201);
+  const { token, submission } = first.body;
+  assert.equal(submission.status, 'received');
+  assert.ok(token);
+  assert.equal((await h.multipart('/api/submissions', { ...publicInput, advertisedOffer: 'Fall personal loan', fileRoles: ['creative'] }, [{ name: 'ad.png', bytes: png }], 'first-public')).body.token, token);
+  let c = (h.app.locals.store.list() as ReviewCase[]).find(item => item.reference === submission.reference)!;
+  c = (await h.action(c, { type: 'add_note', text: 'Private legal discussion.' })).body;
+  c = (await h.revise(c, { fileRoles: ['evidence'] }, [{ name: 'internal-terms.pdf', bytes: destination }])).body;
+  const external = (await h.json(`/api/submissions/${token}`)).body;
+  assert.equal(external.assets.length, 1);
+  assert.equal(external.revisions.at(-1).components.length, 1);
+  for (const field of ['notes', 'history', 'findings', 'decisions', 'drafts', 'offerId', 'submitterToken']) assert.equal(external[field], undefined);
+  assert.equal(JSON.stringify(external).includes('Private legal discussion'), false);
+  assert.equal(JSON.stringify(external).includes('internal-terms.pdf'), false);
+  const privateAsset = c.assets.at(-1)!;
+  assert.equal((await fetch(`${h.url}/api/submissions/${token}/assets/${privateAsset.id}`)).status, 404);
+  const other = (await h.multipart('/api/submissions', publicInput)).body;
+  assert.equal((await fetch(`${h.url}/api/submissions/${other.token}/assets/${submission.assets[0].id}`)).status, 404);
+  assert.equal((await h.json(`/api/submissions/${token}/actions`, { type: 'decide' })).status, 404);
+  assert.equal((await h.json('/api/submissions/not-a-link')).status, 404);
+  assert.equal((await h.multipart(`/api/submissions/${token}/responses`, { expectedVersion: c.version, submittedBy: 'Nina Patel', text: 'A response', findingIds: ['unpublished'] })).status, 400);
+  const response = await h.multipart(`/api/submissions/${token}/responses`, { expectedVersion: c.version, submittedBy: 'Nina Patel', text: 'Here is supporting evidence.', findingIds: [] }, [{ name: 'response.pdf', bytes: destination }]);
+  assert.equal(response.status, 200);
+  assert.equal(response.body.responses.length, 1);
+  assert.equal(response.body.assets.length, 2);
+});
+
+test('explicit replacements preserve originals and capture placement and launch in each revision', async t => {
+  const h = await setup(t);
+  let c: ReviewCase = (await h.multipart('/api/cases', { ...base, fileRoles: ['creative'] }, [{ name: 'ad.png', bytes: png }])).body;
+  const oldAsset = c.assets[0].id;
+  assert.equal((await h.revise(c, { fileRoles: ['creative'], replacements: [oldAsset] }, [{ name: 'ad.png', bytes: revisedPng }])).status, 400);
+  c = (await h.revise(c, { retainedComponents: [], fileRoles: ['creative'], replacements: [oldAsset], channel: 'Email', launchDate: '2026-11-02' }, [{ name: 'ad.png', bytes: revisedPng }])).body;
+  assert.equal(c.assets.length, 2);
+  assert.equal(currentRevision(c).components[0].replacesAssetId, oldAsset);
+  assert.equal(currentRevision(c).channel, 'Email');
+  assert.equal(currentRevision(c).launchDate, '2026-11-02');
+  assert.equal(c.revisions[0].channel, base.channel);
+  assert.equal(c.revisions[0].launchDate, base.launchDate);
 });

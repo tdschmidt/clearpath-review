@@ -4,12 +4,13 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ZodError } from 'zod';
 import { offers, examples } from '../fixtures/examples.ts';
-import { actionSchema, revisionSchema, submissionSchema, offerSchema, withdrawalSchema } from './validation.ts';
+import { actionSchema, revisionSchema, submissionSchema, offerSchema, withdrawalSchema, externalSubmissionSchema, externalRevisionSchema, responseSchema } from './validation.ts';
 import { WorkflowError, WorkflowStore } from './store.ts';
 import { buildReviewExport } from './export.ts';
 import type { Example } from './store.ts';
 import { createReference, withdrawReference } from './references.ts';
-import { PARTICIPANTS } from '../shared/types.ts';
+import { submitterView } from './submitter.ts';
+import { PARTICIPANTS, currentRevision } from '../shared/types.ts';
 import type { Offer } from '../shared/types.ts';
 
 export function createApp(options: { dataDir?: string; seedDemo?: boolean; offers?: Offer[]; examples?: Example[]; distDir?: string } = {}) {
@@ -51,6 +52,29 @@ export function createApp(options: { dataDir?: string; seedDemo?: boolean; offer
     sendAsset(asset, req, res, next);
   });
   app.get('/api/offers', (_req, res) => res.json(store.offers));
+  app.post('/api/submissions', upload, (req, res) => {
+    const c = store.submit({ ...externalSubmissionSchema.parse(payload(req)), offerId: '' }, (req.files || []) as Express.Multer.File[], key(req), true);
+    res.status(201).json({ token: c.submitterToken, submission: submitterView(c) });
+  });
+  app.get('/api/submissions/:token', (req, res) => res.json(submitterView(store.getByToken(req.params.token))));
+  app.post('/api/submissions/:token/revisions', upload, (req, res) => {
+    const c = store.getByToken(String(req.params.token));
+    const input = externalRevisionSchema.parse(payload(req));
+    const allowed = new Set(c.submitterAssetIds || []);
+    const current = currentRevision(c);
+    if (input.retainedComponents.some(component => !allowed.has(component.assetId) || !current.components.some(item => item.assetId === component.assetId))) throw new WorkflowError(400, 'Retain only material from your current submission.');
+    if (input.replacements?.some(assetId => assetId && !allowed.has(assetId))) throw new WorkflowError(400, 'Replace only material from your submission.');
+    const privateComponents = current.components.filter(component => !allowed.has(component.assetId));
+    const updated = store.revise(c.id, { ...input, retainedComponents: [...input.retainedComponents, ...privateComponents], offerId: input.product && input.product !== c.product ? '' : current.offerId }, (req.files || []) as Express.Multer.File[], key(req), true);
+    res.json(submitterView(updated));
+  });
+  app.post('/api/submissions/:token/responses', upload, (req, res) => res.json(submitterView(store.respond(String(req.params.token), responseSchema.parse(payload(req)), (req.files || []) as Express.Multer.File[], key(req)))));
+  app.get('/api/submissions/:token/assets/:assetId', (req, res, next) => {
+    const c = store.getByToken(req.params.token);
+    const asset = c.submitterAssetIds?.includes(req.params.assetId) ? c.assets.find(item => item.id === req.params.assetId) : undefined;
+    if (!asset) throw new WorkflowError(404, 'This submission attachment was not found.');
+    sendAsset(asset, req, res, next);
+  });
   app.get('/api/cases', (_req, res) => res.json(store.list()));
   app.get('/api/cases/:id', (req, res) => res.json(store.get(req.params.id)));
   app.get('/api/cases/:id/export', (req, res) => {

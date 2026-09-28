@@ -16,6 +16,9 @@ const revisionFields = {
   submittedBy: required(120), summary: required(2000), offerId: text(120),
   intendedUse: text(3000), copy: text(60000), destinationUrl: destination,
   fileRoles: z.array(role).max(10),
+  replacements: z.array(z.union([text(120), z.null()])).max(10).optional(),
+  product: z.enum(['personal_loan', 'credit_card', 'mortgage']).optional(), channel: required(120).optional(), launchDate: date.optional(),
+  advertisedOffer: text(3000).optional(), applicabilityReason: text(3000).optional(),
 };
 export const submissionSchema = z.object({
   ...revisionFields, title: required(200), product: z.enum(['personal_loan', 'credit_card', 'mortgage']),
@@ -52,3 +55,7 @@ export const offerSchema = z.object({
   facts: z.array(z.object({ label: required(200), value: required(3000), sourceFileIndex: z.number().int().min(0).optional(), page: z.number().int().min(1).max(10000).optional() }).strict()).min(1).max(100),
 }).strict();
 export const withdrawalSchema = z.object({ reason: required(3000), actorId: text(120).optional() }).strict();
+
+export const externalSubmissionSchema = submissionSchema.omit({ offerId: true, applicabilityReason: true });
+export const externalRevisionSchema = revisionSchema.omit({ offerId: true, applicabilityReason: true });
+export const responseSchema = z.object({ expectedVersion: z.number().int().positive(), submittedBy: required(120), text: required(5000), findingIds: z.array(required(120)).max(100) }).strict();
