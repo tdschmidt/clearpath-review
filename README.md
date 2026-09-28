@@ -1,77 +1,73 @@
 # ClearPath Review
 
-A working review loop for a fictional consumer-finance company: submit marketing, inspect material and supporting facts, request corrections, review the response, and record and share a decision about an exact version.
+A workspace for marketing-compliance reviews. Marketers and affiliates submit material, reviewers request corrections, and both sides can follow the review through to a decision about a specific version.
 
-**[Open the reviewer workspace](https://award-harrison-explore-messaging.trycloudflare.com)** · **[Submit material](https://award-harrison-explore-messaging.trycloudflare.com/submit)** · [GitHub repository](https://github.com/tdschmidt/clearpath-review)
+**[Open the reviewer workspace](https://award-harrison-explore-messaging.trycloudflare.com)** · **[Submit material](https://award-harrison-explore-messaging.trycloudflare.com/submit)**
 
-**Start here:** [one-page product rationale (PDF)](output/pdf/clearpath-product-one-pager.pdf) · [Why these regulatory details shaped the design](docs/regulatory-design-basis.md)
+## The problem
 
-This is an unauthenticated demonstration. Use fictional material only. The repository is public on Theo Schmidt's personal GitHub account; no invitation is needed. The live demo runs on a Mac through a temporary Cloudflare tunnel. The Mac must stay awake and online with the server and tunnel running; restarting the tunnel generates a new URL. The code and documentation remain accessible on GitHub when the Mac is off.
+When files and feedback live in email and status lives in a spreadsheet, reviewers have to reconstruct the case: which version is current, what changed, which questions remain open, and who needs to act next.
+
+This product brings that work into one record. The working assumption is that coordination and incomplete correction rounds contribute to the approval bottleneck. That assumption still needs validation with a real review team; no throughput improvement has been measured.
+
+## How it works
+
+- **Submitters** use a separate submission form and return link. They can see shared requests, answer a specific question, upload supporting evidence, submit a revision, and view the shared decision and its scope.
+- **Reviewers** work from a queue showing status and next actions. They inspect creative alongside supporting sources, record findings, assess responses, and deliberately share feedback or a decision. Internal reasoning stays out of the submitter view.
+- **Offer references** hold product terms and source documents used to assess the advertising. They are separate from submitted ads and can be versioned or withdrawn without replacing the historical record.
 
 ## Five-minute tour: try both sides
 
-Open **Sample materials → Try a prepared case**. Each case has **Review case** and **Submitter page** links; keep the two tabs open together. The review header also has **View submitter page**. After an action in the other tab, use **Refresh workspace** or **Check for updates**.
+Open **Sample materials → Try a prepared case**. Each case has **Review case** and **Submitter page** links; open both to follow the exchange. After changing one side, use **Refresh workspace** or **Check for updates** on the other.
 
-| What to explore | Prepared case and shortest route | What to notice |
-| --- | --- | --- |
-| Intake | **Northstar · October loan launch** → Review case | Select the applicable loan reference and confirm the package. New submissions have no automatically generated findings. |
-| Partial corrections | **Northstar · Fee correction returned** → Review case → Versions | Compare the original and corrected image. Resolve the fee finding; the missing destination still blocks approval. |
-| The submitter's action items | Open the same case's **Submitter page** | See shared requests, reply to a specific request, or update the submitted material. Internal reasoning is absent from this view. |
-| Returned evidence | **Northstar · Destination evidence received** → Assess responses | Read the answer and both PDF pages beside the creative. Including this existing attachment in a new package is explicit; receiving it does not resolve the finding. |
-| A decision awaiting communication | **ClearPath · October social handoff** → Prepare decision message | Inspect the saved reply and scope, then deliberately share. Saving a draft alone does not communicate the decision. |
-| A completed review | **Northstar · October campaign approved** → either side | Inspect the shared approval, exact files, scope, accepted requests, and preserved earlier versions. |
-| A source withdrawn after approval | **Northstar · Offer reference withdrawn** → Review with current reference | The queue surfaces the withdrawal. Sharing the old approval is blocked; a replacement source and fresh review are required. |
-| Retrieve the evidence record | Any case → **History & notes → Download internal record** | Download original files, reference documents, revisions, decisions, and handoffs. The ZIP contains internal reasoning; it is not an affiliate reply. |
+| Prepared case | What to try |
+| --- | --- |
+| **Northstar · October loan launch** | Select the loan reference, confirm intake, and add a finding. A new submission starts without findings. |
+| **Northstar · Fee correction returned** | Compare the original and revised images. Resolve the fee correction; the missing destination still blocks approval. Open the submitter page to see and respond to the shared requests. |
+| **Northstar · Destination evidence received** | Assess the response and its two-page PDF beside the creative. Receiving evidence does not automatically resolve a request. |
+| **ClearPath · October social handoff** | Open the saved decision message, check its scope, and share it. Confirm the result appears on the submitter page. |
+| **Northstar · October campaign approved** | Inspect the approved files, scope, and correction history from either side. Download the internal record under **History & notes**. |
+| **Northstar · Offer reference withdrawn** | See why an earlier approval cannot be newly shared and follow the route to review with a current reference. |
 
-For the full loop from a blank submission, follow the [walkthrough](docs/demo-walkthrough.md). For rejection, approval withdrawal, source versioning, waiting/ownership, draft recovery, and other paths, use the [flow index](docs/demo-flows.md). [Sample details and repeatable setup](docs/sample-cases.md) explain the prepared stages.
+Changes persist in the shared demo, so a case may reflect a previous visitor's actions. The [full walkthrough](docs/demo-walkthrough.md) starts with a blank submission; the [flow index](docs/demo-flows.md) covers withdrawal, ownership, source versioning, draft recovery, and other paths.
 
-The ten live cases include six added workflow stages, the original loan/card/mortgage examples, and an existing user-created case. They are editable fictional records; another tester may change their state. The card example **Everyday, simply** deliberately leaves a disclosure question unresolved even though the advertised fee matches its reference. The mortgage example **A clearer first step home** is waiting on its destination.
+## Key decisions
 
-## Product boundaries and known gaps
+- **Keep compliance judgment with the reviewer.** The app organizes evidence and unresolved work; it does not determine whether an ad complies. Sample findings are authored examples, not automated detections.
+- **Make corrections explicit.** A revised file or a new response does not clear a finding. Approval requires resolved required findings and assessment of pending responses, so a partial correction cannot silently finish the review.
+- **Tie approval to what was reviewed.** Decisions preserve the package version, supporting reference, and intended use. Later revisions do not inherit approval. A withdrawn reference blocks sharing the earlier approval.
+- **Separate recording from communicating.** Saving a draft or recording a decision does not publish it to the submitter. Sharing is deliberate, with private reasoning kept separate from actionable requests.
+- **Complete the portal workflow first.** Email integration would help preserve affiliates' existing habits. This version focuses on making the submission, correction, and decision loop work before adding another intake channel.
 
-The core workflow persists real records and files. PNG/JPEG and multipage PDF previews, citations, revisions, feedback, responses, human dispositions, scoped decisions, and ZIP exports are implemented. Offer references contain manually entered facts with preserved sources. Seeded findings are authored examples, not scanner output.
+The research informed the material and context a reviewer needs to inspect, including offer terms, disclosure presentation, and support for claims. The [regulatory design basis](docs/regulatory-design-basis.md) connects specific sources to these choices and distinguishes legal requirements from product decisions.
 
-The [final audit's workflow defects](docs/final-workflow-audit.md) are corrected: pending responses interrupt approval and approval sharing; changed recipient instructions are flagged for deliberate re-sharing; revision attribution, evidence context, and handoff prompts are consistent. The [readiness decisions](docs/submission-readiness.md) explain each change and its validation. No further submission-blocking defect was found in the final checks; this is a bounded audit, not a guarantee of production readiness.
+## Current limits
 
-Email intake and notifications, authentication and partner permissions, automated compliance analysis, OCR/video/live-page capture, campaign expiration/monitoring, and production retention/backup operations are outside this version. Portal sharing is not email delivery. A saved approval is a human decision, not legal certification. No throughput improvement or detection accuracy has been measured.
+The demo has no sign-in or production permissions; use sample material only. Return links separate the submitter experience but are not a complete access-control model. Sharing updates the portal; it sends no email or notification.
 
-## Design and implementation
-
-The [presenter briefing](docs/presenter-briefing.md) explains the reconstructed Excel/email process, stakeholder needs, reviewer judgments, assumptions, and alternatives. The [product story](docs/product-story.md) and [research](docs/research.md) retain the reasoning behind the chosen scope. The private call transcript is not in the repository.
-
-For concrete implementation choices, read the [core workflow decisions](docs/core-workflow-decisions.md), [reviewer decisions](docs/reviewer-workflow-decisions.md), and [submitter decisions](docs/external-workflow-decisions.md). Research informed the information and evidence a reviewer needs; it is not implemented as an exhaustive legal rule engine.
-
-React/Vite provides the interface; Express validates requests; Node's SQLite stores versioned case records; original files are stored separately with hashes. Useful entry points are [API routes](server/app.ts), [state transitions](server/store.ts), [sharing and communication](server/handoffs.ts), and the deliberately separate [submitter response model](server/submitter.ts). Large UI modules and duplicated internal/external form concerns are maintenance work for a later iteration, not a reason to rewrite working flows before submission.
+PNG/JPEG and multipage PDFs have previews. Offer facts are entered manually. There is no automated compliance analysis, OCR, video review, or live-page capture. Campaign expiration, post-publication monitoring, and production backup and retention controls are also outside this version. The live demo runs through a temporary tunnel and depends on its host staying online.
 
 ## Run locally
 
-Use Node.js **24.14.0** (supported: `>=24.14.0 <25`) and npm.
+Requires Node.js **24.14.0 or later within Node 24** and npm.
 
 ```sh
-npm install
+npm ci
 npm run build
 npm start
 ```
 
-Open `http://localhost:3000`. In a second terminal, add the prepared stages with:
+Open `http://localhost:3000`. With the server running, add the prepared cases from a second terminal:
 
 ```sh
 npm run demo:populate
 ```
 
-The script is additive: it skips completed scenarios and never resets work a tester has changed. Local records and uploads use the ignored `data/` directory, or a separate directory selected through `DATA_DIR`. Development uses `npm run dev` (Vite on port 5173, Express on 3000).
+The script adds missing scenarios without resetting existing work. See the [sample guide](docs/sample-cases.md) for setup details. Records and uploads persist in the ignored `data/` directory; set `DATA_DIR` to use another location. For development, `npm run dev` runs Vite on port 5173 and Express on port 3000.
 
-For temporary access, with Cloudflare Tunnel installed separately:
+React/Vite provides the interface, Express handles the API, and SQLite stores the case records. Original files are stored separately with hashes. Start with [API routes](server/app.ts), [case state transitions](server/store.ts), [decision sharing](server/handoffs.ts), or the [submitter response model](server/submitter.ts).
 
-```sh
-cloudflared tunnel --url http://localhost:3000
-```
-
-The current local binary is `data/tools/cloudflared`; it is ignored and not part of a fresh clone. An installed/configured ngrok can also expose port 3000.
-
-For a review using the current link, keep the Mac plugged in, the lid open, and both running processes alive. The website does not need to stay open in a browser. `caffeinate -i` in a separate Terminal prevents idle sleep while that command runs; stop it with Ctrl-C afterward. It does not keep the site available through shutdown, loss of internet, or stopped server/tunnel processes. Hosting the app and persistent data on a separate server would remove the Mac dependency.
-
-## Verification
+## Tests
 
 ```sh
 npm test
@@ -79,8 +75,12 @@ npm run build
 npm run test:e2e
 ```
 
-The latest full verification passed **35 API tests and 23 browser tests**. Coverage includes actual uploads, file/page citations, partial corrections, stale saves, draft reconciliation, privacy boundaries, exact decision-message versions, late evidence at approval/sharing, changed request obligations, source withdrawal recovery, and export contents. The [manual audit](docs/final-workflow-audit.md) records the browser walkthrough and its limits. These checks do not establish legal accuracy, security readiness, or measured time savings.
+API and browser tests cover uploads, revisions, partial corrections, concurrent edits, submitter visibility, approval and sharing checks, source withdrawal, and record exports. They verify workflow behavior, not legal accuracy.
 
-Browser tests use an isolated server on port 3101 and temporary data. They use Playwright Chromium, falling back to system Chrome on macOS; otherwise install Chromium with `npx playwright install chromium`. Build first so they exercise the current frontend. Type checking also rejects unused imports, locals, and parameters.
+Browser tests use isolated data on port 3101. They use Playwright Chromium or system Chrome on macOS; install Chromium with `npx playwright install chromium` if needed.
 
-Adding prepared cases preserved the four existing case records, three original references, and all ten existing files. The setup was run twice to verify it did not duplicate or reset cases. These preservation checks and the live sample links were verified separately.
+## Further reading
+
+- [Product rationale](docs/product-one-pager.md): assumptions, priorities, tradeoffs, and what to validate next.
+- [Research](docs/research.md): the reconstructed review process, stakeholders, and alternative product directions.
+- [Regulatory design basis](docs/regulatory-design-basis.md): how specific advertising requirements informed the workflow.
