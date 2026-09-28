@@ -415,7 +415,7 @@ export default function App() {
           onClose={() => setDialog(null)}
         />
       )}
-      {dialog === "samples" && <Samples onClose={() => setDialog(null)} />}
+      {dialog === "samples" && <Samples cases={cases} onClose={() => setDialog(null)} />}
       {dialog === "guide" && <Guide onClose={() => setDialog(null)} />}
       {selected && (
         <>
@@ -928,7 +928,10 @@ function DecisionRecord({
   );
 }
 
-function Samples({ onClose }: { onClose: () => void }) {
+function Samples({ cases, onClose }: { cases: ReviewCase[]; onClose: () => void }) {
+  const prepared = cases
+    .filter((review) => review.notes.some((note) => note.text.startsWith("Sample scenario prepared:")))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const links = [
     [
       "Initial social ad",
@@ -969,6 +972,28 @@ function Samples({ onClose }: { onClose: () => void }) {
       wide
     >
       <div className="modal-body">
+        {prepared.length > 0 && (
+          <>
+            <h3>Try a prepared case</h3>
+            <p className="small-muted">
+              Open a stage of the review without recreating the earlier steps.
+              These are fictional records; changes you make are saved.
+            </p>
+            <div className="sample-downloads">
+              {prepared.map((review) => (
+                <a key={review.id} href={`#review/${review.id}`} onClick={onClose}>
+                  <span className="download-icon"><FolderOpen size={20} /></span>
+                  <span>
+                    <strong>{review.title}</strong>
+                    <small>{review.reference} · Version {currentRevision(review).number}</small>
+                  </span>
+                  <ArrowRight size={18} />
+                </a>
+              ))}
+            </div>
+            <h3>Or start from the original files</h3>
+          </>
+        )}
         <div className="sample-story">
           <span className="sample-step">01</span>
           <p>

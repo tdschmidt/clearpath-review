@@ -54,6 +54,8 @@ The locally downloaded binary is `data/tools/cloudflared`; it is ignored by Git 
 
 ## Try the review loop
 
+For a quick tour, use **Sample materials → Try a prepared case**. The shared demo has six additional cases covering intake, a partial correction, returned evidence, an unshared decision, a shared approval, and a withdrawn supporting reference. The [sample-case guide](docs/sample-cases.md) explains what to try. With the app running, `npm run demo:populate` adds these stages to a fresh local database without resetting existing work.
+
 Follow the [short walkthrough](docs/demo-walkthrough.md): submit an image, share two requests, return a partial correction, supply the destination PDF, and record and publish a scoped decision. To start with authored material, open **Make room for what’s next**; legacy findings begin Internal, so choose their audience before sharing.
 
 Seeded findings are written examples, not automatically detected results. A fresh submission starts without findings. The goal is a complete review loop, not automatic legal clearance or measured time savings.
