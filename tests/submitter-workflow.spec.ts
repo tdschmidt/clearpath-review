@@ -155,7 +155,14 @@ test("all shared requests remain actionable across feedback batches, and only ex
     body: "One additional suggestion.",
   });
 
+  await page.goto(`/#review/${review.id}`);
+  await expect(page.getByRole("link", { name: "View submitter page" })).toHaveAttribute(
+    "href", `/submit/${receipt.token}`,
+  );
   await page.goto(`/submit/${receipt.token}`);
+  const nextStep = page.getByRole("region", { name: "Your next step" });
+  await expect(nextStep.getByRole("heading", { name: "Changes or information needed" })).toBeVisible();
+  await expect(nextStep).toContainText("2 required requests unresolved");
   await expect(page.getByLabel("Your return link")).not.toBeVisible();
   await page.getByText("Your return link", { exact: true }).click();
   await expect(page.getByLabel("Your return link")).toBeVisible();
@@ -226,6 +233,7 @@ test("all shared requests remain actionable across feedback batches, and only ex
   const response = external.responses.at(-1)!;
   expect(response.findingIds).toEqual([first.id]);
   expect(response.assetIds).toHaveLength(1);
+  await expect(nextStep).toContainText("2 required requests unresolved · 1 awaiting reviewer assessment");
   await expect(
     firstCard.getByText("Response received · awaiting reviewer assessment", {
       exact: true,
@@ -302,6 +310,48 @@ test("all shared requests remain actionable across feedback batches, and only ex
     "href",
     `/api/submissions/${receipt.token}/assets/${initial.components[0].assetId}#page=1`,
   );
+  await expect(nextStep.getByRole("heading", { name: "Updated package received" })).toBeVisible();
+  await nextStep.getByRole("button", { name: "Update submitted material" }).click();
+  await expect(page.locator("#updated-package-form")).toBeFocused();
+  await expect(page.getByLabel("What changed?", { exact: true })).toBeVisible();
+});
+
+test("the submitter can distinguish a received answer from an accepted request and a final decision", async ({ page }) => {
+  const receipt = await createExternalDraftCase(page.request, "Submitter next action");
+  const cases: ReviewCase[] = await (await page.request.get("/api/cases")).json();
+  const review = cases.find(item => item.reference === receipt.submission.reference)!;
+  const offers: Offer[] = await (await page.request.get("/api/offers")).json();
+  await internalAction(page.request, review.id, {
+    type: "confirm_intake", offerId: offers.find(offer => offer.product === "personal_loan" && !offer.withdrawnAt)!.id,
+  });
+  const updated = await internalAction(page.request, review.id, {
+    type: "add_finding", finding: {
+      kind: "evidence", title: "Confirm the placement", detail: "PRIVATE_INTERNAL_BASIS",
+      request: "Confirm the named placement and run dates.", location: "Campaign context", assetId: "",
+      owner: "Taylor Partner", material: true, audience: "submitter",
+    },
+  });
+  const finding = updated.findings.at(-1)!;
+  await internalAction(page.request, review.id, {
+    type: "publish_feedback", findingIds: [finding.id], subject: "Placement confirmation", body: "Please confirm the intended use.",
+  });
+  await page.goto(`/submit/${receipt.token}`);
+  const nextStep = page.getByRole("region", { name: "Your next step" });
+  await page.getByRole("button", { name: `Respond to F${String(finding.number).padStart(2, "0")}` }).click();
+  await page.getByLabel("Your response", { exact: true }).fill("Northstar social placement for California adults, October 5-November 15, 2026.");
+  await page.getByRole("button", { name: "Send response to review" }).click();
+  await expect(nextStep.getByRole("heading", { name: "Waiting for reviewer assessment" })).toBeVisible();
+  await expect(nextStep).toContainText("You do not need to resend it.");
+  const latest: ReviewCase = await (await page.request.get(`/api/cases/${review.id}`)).json();
+  await internalAction(page.request, review.id, {
+    type: "disposition", findingId: finding.id, status: "resolved", reason: "PRIVATE_RESOLUTION",
+    responseIds: [latest.responses!.at(-1)!.id], shareWithSubmitter: true,
+  });
+  await page.getByRole("button", { name: "Check for updates" }).click();
+  await expect(nextStep.getByRole("heading", { name: "Requests addressed; decision pending" })).toBeVisible();
+  await expect(nextStep).toContainText("Wait for a decision before using this material.");
+  await expect(page.getByText(/PRIVATE_/)).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Approved for the stated use", exact: true })).toHaveCount(0);
 });
 
 test("an external submitter returns to shared feedback, supplies real revisions, and sees only a published scoped decision", async ({

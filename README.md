@@ -6,7 +6,7 @@ A marketing-approval workspace for a fictional consumer-finance company, with a 
 
 For the presentation: [one-page product rationale (PDF)](output/pdf/clearpath-product-one-pager.pdf), [editable rationale](docs/product-one-pager.md), and [presenter briefing](docs/presenter-briefing.md). The briefing explains the reconstructed process, regulatory examples, assumptions, and tradeoffs. The private call transcript remains outside the repository.
 
-The production build, **33 API tests**, and **19 browser workflow tests** pass. The updated public workspace, submission page, source preview, API, originals, and ZIP download were verified on September 27, 2026. This temporary URL works while the Mac, server, and tunnel stay running; restarting the tunnel creates a new URL.
+The production build, **33 API tests**, and **20 browser workflow tests** pass. The updated public workspace, submission page, source preview, API, originals, and ZIP download were verified on September 27, 2026. This temporary URL works while the Mac, server, and tunnel stay running; restarting the tunnel creates a new URL.
 
 Start with [what we built and why](docs/delivery-rundown.md) for the working product, audit changes, stakeholders, and deliberate limits. The [regulatory design basis](docs/regulatory-design-basis.md) maps specific sources to implemented choices and distinguishes legal requirements from product judgment. The [original product story](docs/product-story.md) reconstructs the process and bottleneck hypothesis; [research and alternatives](docs/research.md) and [submission-format evidence](docs/submission-format-research.md) provide supporting detail.
 
@@ -56,7 +56,7 @@ The locally downloaded binary is `data/tools/cloudflared`; it is ignored by Git 
 
 ## Try the review loop
 
-For a quick tour, use **Sample materials → Try a prepared case**. The shared demo has six additional cases covering intake, a partial correction, returned evidence, an unshared decision, a shared approval, and a withdrawn supporting reference. The [sample-case guide](docs/sample-cases.md) explains what to try. With the app running, `npm run demo:populate` adds these stages to a fresh local database without resetting existing work.
+For a quick tour, use **Sample materials → Try a prepared case**, then choose **Review case** or **Submitter page**. The shared demo has six additional cases covering intake, a partial correction, returned evidence, an unshared decision, a shared approval, and a withdrawn supporting reference. The [sample-case guide](docs/sample-cases.md) explains what to try. With the app running, `npm run demo:populate` adds these stages to a fresh local database without resetting existing work.
 
 Follow the [short walkthrough](docs/demo-walkthrough.md): submit an image, share two requests, return a partial correction, supply the destination PDF, and record and publish a scoped decision. To start with authored material, open **Make room for what’s next**; legacy findings begin Internal, so choose their audience before sharing.
 
@@ -79,3 +79,5 @@ The latest refinement added one required finding to the existing card sample thr
 Browser tests use a separate server on port 3101 and temporary data. They use Playwright Chromium, falling back to system Chrome on macOS when available; otherwise run `npx playwright install chromium`. Build first so browser tests exercise the current frontend.
 
 The prepared-case addition brings the shared demo to **10 cases and 4 references**. Its six new scenarios were verified separately, including original-file hashes, external views, and repeat setup without duplication. The existing four cases, three references, and ten original files were preserved. The build and the deployed Sample materials shortcuts were checked after the addition. This did not change the remaining workflow defects in the audit.
+
+The subsequent submitter-side refinement adds a visible next-action summary and direct links to both sides of a review. The build and all **20 browser tests** passed, including a new check that receiving an answer, accepting a request, and approving a package remain distinct. See the [external workflow decisions](docs/external-workflow-decisions.md) for the reasoning and limits.

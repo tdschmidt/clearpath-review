@@ -297,6 +297,15 @@ export default function SubmitterApp() {
   const returnLink = token
     ? `${window.location.origin}/submit/${encodeURIComponent(token)}`
     : "";
+  function openRevision() {
+    setRevisionStarted(true);
+    setRevisionOpen(true);
+    requestAnimationFrame(() => {
+      const form = document.getElementById("updated-package-form");
+      form?.focus({ preventScroll: true });
+      form?.scrollIntoView({ block: "start" });
+    });
+  }
   return (
     <div className="partner-app">
       <header className="partner-header">
@@ -437,6 +446,7 @@ export default function SubmitterApp() {
                 <CurrentRequests
                   submission={submission}
                   token={token}
+                  onRevise={openRevision}
                   onRespond={(findingId) =>
                     setReplyTarget((old) => ({
                       findingId,
@@ -496,8 +506,8 @@ export default function SubmitterApp() {
                           className="button secondary"
                           type="button"
                           onClick={() => {
-                            setRevisionStarted(true);
-                            setRevisionOpen((v) => !v);
+                            if (revisionOpen) setRevisionOpen(false);
+                            else openRevision();
                           }}
                         >
                           {revisionOpen
@@ -730,7 +740,12 @@ function PackageForm({
     }
   }
   return (
-    <form className="partner-card partner-package-form" onSubmit={submit}>
+    <form
+      id={existing ? "updated-package-form" : undefined}
+      tabIndex={existing ? -1 : undefined}
+      className="partner-card partner-package-form"
+      onSubmit={submit}
+    >
       {existing && (
         <div className="partner-section-heading">
           <div>
@@ -1214,10 +1229,12 @@ function CurrentRequests({
   submission,
   token,
   onRespond,
+  onRevise,
 }: {
   submission: SubmitterCase;
   token: string;
   onRespond: (findingId: string) => void;
+  onRevise: () => void;
 }) {
   const requests = submission.sharedRequests || [];
   const latestMessage = submission.feedback.at(-1);
@@ -1226,6 +1243,20 @@ function CurrentRequests({
   const currentResult = submission.results.findLast(
     (result) => result.revisionId === current?.id,
   );
+  const openRequired = requests.filter((r) => r.material && r.status === "open").length;
+  const unresolvedRequired = requests.filter((r) => r.material && ["open", "response_received"].includes(r.status)).length;
+  const awaiting = requests.filter((r) => r.status === "response_received").length;
+  const addressed = requests.filter((r) => ["accepted", "no_longer_required"].includes(r.status)).length;
+  const advice = requests.filter((r) => !r.material && r.status === "open").length;
+  const feedbackVersion = Math.max(0, ...submission.feedback.map((batch) =>
+    submission.revisions.find((revision) => revision.id === batch.revisionId)?.number || 0,
+  ));
+  const newerPackage = (current?.number || 0) > feedbackVersion;
+  const summaryTitle = openRequired
+    ? newerPackage ? "Updated package received" : "Changes or information needed"
+    : awaiting ? "Waiting for reviewer assessment"
+      : advice ? "Reviewer suggestions available"
+        : "Requests addressed; decision pending";
   const order = {
     open: 0,
     response_received: 1,
@@ -1256,6 +1287,33 @@ function CurrentRequests({
           </p>
         </div>
       </div>
+      {requests.length > 0 && !currentResult && submission.status !== "cancelled" && (
+        <section className="partner-request-summary" aria-label="Your next step">
+          <h3>{summaryTitle}</h3>
+          <p>
+            {unresolvedRequired} required {unresolvedRequired === 1 ? "request" : "requests"} unresolved
+            {` · ${awaiting} awaiting reviewer assessment · ${addressed} addressed`}
+            {advice > 0 ? ` · ${advice} optional ${advice === 1 ? "suggestion" : "suggestions"}` : ""}
+          </p>
+          <p>
+            {openRequired
+              ? newerPackage
+                ? `Version ${current?.number} is with the reviewer. Earlier requests stay open until the reviewer confirms them. You can still supply outstanding answers or files below.`
+                : "Use Respond on a request to send an answer or supporting evidence. For changes to the advertising itself, update the submitted material."
+              : awaiting
+                ? "Your response is with the reviewer. You do not need to resend it. The reviewer will confirm whether it addresses the request."
+                : advice
+                  ? "The suggestions below are optional. A decision on the complete package is still pending."
+                  : "The shared requests have been addressed. Wait for a decision before using this material."}
+          </p>
+          {(openRequired > 0 || advice > 0) && (
+            <button className="button secondary" type="button" onClick={onRevise}>
+              Update submitted material <ArrowRight size={16} />
+            </button>
+          )}
+          <small>Updates appear on this page. Email notifications are not enabled.</small>
+        </section>
+      )}
       {latestMessage && (
         <div className="partner-latest-message">
           <strong>{latestMessage.subject}</strong>

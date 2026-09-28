@@ -1,6 +1,6 @@
 # Try the prepared review cases
 
-Open **Sample materials → Try a prepared case** from the reviewer workspace. These are working, fictional records at useful stages, not screenshots. Actions persist. The names below describe their prepared starting states; they may change as people use them. Open **People & submission link → Open submission page** inside a case to see its affiliate/marketer view in another tab.
+Open **Sample materials → Try a prepared case** from the reviewer workspace. Each entry offers **Review case** and **Submitter page** links, so you can inspect both sides in separate tabs. These are working, fictional records at useful stages, not screenshots. Actions persist. The names below describe their prepared starting states; they may change as people use them. Inside a case, **View submitter page** is also available in the header; link management remains under Case details.
 
 | Prepared case | What is already there | What to try |
 | --- | --- | --- |
