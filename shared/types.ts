@@ -265,6 +265,7 @@ export type CaseAction = { expectedVersion: number; actorId?: string } & (
       reason: string;
       responseIds?: string[];
       shareWithSubmitter?: boolean;
+      resumeReview?: boolean;
     }
   | { type: "set_waiting"; nextOwner: string; reason: string }
   | { type: "resume" }

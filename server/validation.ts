@@ -42,7 +42,7 @@ const version = { expectedVersion: z.number().int().positive(), actorId: text(12
 export const actionSchema = z.discriminatedUnion('type', [
   z.object({ ...version, type: z.literal('confirm_intake'), offerId: text(120).optional(), applicabilityReason: text(3000).optional() }).strict(),
   z.object({ ...version, type: z.literal('add_finding'), finding }).strict(),
-  z.object({ ...version, type: z.literal('disposition'), findingId: required(120), status: z.enum(['open', 'resolved', 'dismissed']), reason: required(3000), responseIds: z.array(required(120)).max(100).optional(), shareWithSubmitter: z.boolean().optional() }).strict(),
+  z.object({ ...version, type: z.literal('disposition'), findingId: required(120), status: z.enum(['open', 'resolved', 'dismissed']), reason: required(3000), responseIds: z.array(required(120)).max(100).optional(), shareWithSubmitter: z.boolean().optional(), resumeReview: z.boolean().optional() }).strict(),
   z.object({ ...version, type: z.literal('set_waiting'), nextOwner: required(120), reason: required(2000) }).strict(),
   z.object({ ...version, type: z.literal('resume') }).strict(),
   z.object({ ...version, type: z.literal('add_note'), text: required(5000) }).strict(),

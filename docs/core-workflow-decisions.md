@@ -25,3 +25,8 @@ A response attachment is preserved evidence, not automatically an approved deliv
 ## Internal revision drafts
 
 A saved draft contains edits against a particular package, not permission to overwrite the latest one. When another version or its review context changes, the internal revision form keeps actual text edits and local uploads, adopts untouched current fields, and requires an explicit choice for conflicting edits. File retention and role choices are reset to the latest package for review. This also catches attachment-only drafts reopened later, so a retry cannot silently drop newly submitted files or restore old copy. Browser regressions cover concurrent saves, close/reopen recovery, and deliberate conflict resolution.
+
+
+## Returning a waiting case to review
+
+Recording a finding disposition can explicitly return the case to its reviewer in the same action. The choice is separate from resolving the finding: leaving it unchecked preserves the existing wait, and returning to review leaves every other unresolved finding intact. This prevents the last assessed response from disappearing into a waiting queue while also respecting a reviewer who is still waiting for something else. The history records both the disposition and the deliberate resumption.

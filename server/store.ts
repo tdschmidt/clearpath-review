@@ -240,6 +240,10 @@ export class WorkflowStore {
       const actor = participant(action.actorId);
       if (['approved', 'rejected', 'cancelled'].includes(c.status) && !['add_note', 'save_draft', 'assign_owner', 'correct_contact', 'create_submitter_link', 'rotate_submitter_link', 'publish_result', 'record_communication', 'withdraw_approval', 'cancel', 'add_response', 'assess_response'].includes(action.type)) throw new WorkflowError(409, 'This revision has a final decision. Submit a new revision to resume review.', 'decision_closed');
       const event = (type: string, text: string) => this.event(c, type, text, actor.name);
+      const resumeReview = () => {
+        c.status = c.confirmedRevisionId === revision.id ? 'in_review' : 'needs_intake'; c.nextOwner = c.owner; c.waitingReason = '';
+        event('resumed', 'Review resumed.');
+      };
       if (applyHandoff(c, action, actor.name, this.offers, event)) return this.save(c, action.expectedVersion);
       switch (action.type) {
         case 'confirm_intake': {
@@ -292,6 +296,7 @@ export class WorkflowStore {
               }
             }
           }
+          if (action.resumeReview && c.status === 'waiting') resumeReview();
           break;
         }
         case 'set_waiting':
@@ -299,8 +304,7 @@ export class WorkflowStore {
           event('waiting', `Waiting on ${action.nextOwner}: ${action.reason}`);
           break;
         case 'resume':
-          c.status = c.confirmedRevisionId === revision.id ? 'in_review' : 'needs_intake'; c.nextOwner = c.owner; c.waitingReason = '';
-          event('resumed', 'Review resumed.');
+          resumeReview();
           break;
         case 'add_note':
           c.notes.push({ id: id(), text: action.text, author: actor.name, createdAt: now() });

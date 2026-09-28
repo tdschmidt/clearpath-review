@@ -844,3 +844,38 @@ test('revisions preserve an omitted applicability basis and recheck explicit cha
   assert.equal(currentRevision(c).applicabilityReason, '');
   assert.equal(c.findings[0].needsRecheck, true);
 });
+
+test('disposition returns a waiting case to review only through explicit handoff', async t => {
+  const h = await setup(t);
+  let c: ReviewCase = (await h.json('/api/examples/personal-loan', {})).body;
+  const [firstId, secondId] = c.findings.map(finding => finding.id);
+  c = (await h.action(c, { type: 'add_response', text: 'Evidence for both requests is available.', findingIds: [firstId, secondId] })).body;
+  const responseId = c.responses![0].id;
+  c = (await h.action(c, { type: 'set_waiting', nextOwner: 'Product specialist', reason: 'Still waiting for confirmation.' })).body;
+  c = (await h.action(c, { type: 'disposition', findingId: firstId, status: 'resolved', reason: 'The first request was assessed.', responseIds: [responseId] })).body;
+  assert.equal(c.status, 'waiting');
+  assert.equal(c.nextOwner, 'Product specialist');
+  assert.equal(c.waitingReason, 'Still waiting for confirmation.');
+  assert.equal(c.responses![0].assessment, undefined);
+
+  let result = await h.action(c, { type: 'disposition', findingId: firstId, status: 'resolved', reason: 'Ready for reviewer follow-up; the other request stays open.', responseIds: [responseId], resumeReview: true });
+  assert.equal(result.status, 200);
+  c = result.body;
+  assert.equal(c.status, 'in_review');
+  assert.equal(c.nextOwner, c.owner);
+  assert.equal(c.waitingReason, '');
+  assert.equal(c.findings[1].status, 'open');
+  assert.equal((await h.action(c, approved)).body.code, 'unresolved_findings');
+  assert.equal(c.history.at(-1)?.type, 'resumed');
+
+  c = (await h.action(c, { type: 'set_waiting', nextOwner: 'Product specialist', reason: 'Second confirmation.' })).body;
+  result = await h.action(c, { type: 'disposition', findingId: secondId, status: 'resolved', reason: 'The remaining request was assessed.', responseIds: [responseId], resumeReview: true });
+  assert.equal(result.status, 200);
+  c = result.body;
+  assert.equal(c.status, 'in_review');
+  assert.equal(c.nextOwner, c.owner);
+  assert.equal(pendingResponses(c).length, 0);
+  assert.ok(c.findings.every(finding => finding.status === 'resolved'));
+  assert.equal(c.history.at(-1)?.type, 'resumed');
+  assert.equal((await h.action(c, approved)).status, 200);
+});
