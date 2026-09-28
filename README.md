@@ -1,66 +1,73 @@
 # ClearPath Review
 
-A marketing-approval workspace for a fictional consumer-finance company, with a separate submission and correction journey for affiliates. Creative, references, findings, revisions, and human decisions stay in one record.
+A working review loop for a fictional consumer-finance company: submit marketing, inspect material and supporting facts, request corrections, review the response, and record and share a decision about an exact version.
 
-**[Reviewer workspace](https://award-harrison-explore-messaging.trycloudflare.com)** · **[Submit material](https://award-harrison-explore-messaging.trycloudflare.com/submit)** · [Private GitHub repository](https://github.com/tdschmidt/clearpath-review)
+**[Open the reviewer workspace](https://award-harrison-explore-messaging.trycloudflare.com)** · **[Submit material](https://award-harrison-explore-messaging.trycloudflare.com/submit)** · [Private repository](https://github.com/tdschmidt/clearpath-review)
 
-For the presentation: [one-page product rationale (PDF)](output/pdf/clearpath-product-one-pager.pdf), [editable rationale](docs/product-one-pager.md), and [presenter briefing](docs/presenter-briefing.md). The briefing explains the reconstructed process, regulatory examples, assumptions, and tradeoffs. The private call transcript remains outside the repository.
+**Start here:** [one-page product rationale (PDF)](output/pdf/clearpath-product-one-pager.pdf) · [Why these regulatory details shaped the design](docs/regulatory-design-basis.md)
 
-The production build, **33 API tests**, and **20 browser workflow tests** pass. The updated public workspace, submission page, source preview, API, originals, and ZIP download were verified on September 27, 2026. This temporary URL works while the Mac, server, and tunnel stay running; restarting the tunnel creates a new URL.
+This is an unauthenticated demonstration. Use fictional material only. The Mac, server, and tunnel must remain running; restarting the tunnel changes the temporary URL. The GitHub repository is private, so the reviewer needs access separately.
 
-Start with [what we built and why](docs/delivery-rundown.md) for the working product, audit changes, stakeholders, and deliberate limits. The [regulatory design basis](docs/regulatory-design-basis.md) maps specific sources to implemented choices and distinguishes legal requirements from product judgment. The [original product story](docs/product-story.md) reconstructs the process and bottleneck hypothesis; [research and alternatives](docs/research.md) and [submission-format evidence](docs/submission-format-research.md) provide supporting detail.
+## Five-minute tour: try both sides
 
-The [automated-review decision](docs/research.md#decision-defer-automated-substantive-review) explains why rules, Jev, and LLM assistance were investigated and left outside this project. The [detailed research](docs/jev-ad-review-research.md) preserves their potential uses and a conditional evaluation plan.
+Open **Sample materials → Try a prepared case**. Each case has **Review case** and **Submitter page** links; keep the two tabs open together. The review header also has **View submitter page**. After an action in the other tab, use **Refresh workspace** or **Check for updates**.
 
-The [audit resolution](docs/audit-resolution.md) separates working features from remaining demo boundaries. The [first implementation decisions](docs/implementation-decisions.md), [core workflow decisions](docs/core-workflow-decisions.md), [reviewer decisions](docs/reviewer-workflow-decisions.md), and [affiliate decisions](docs/external-workflow-decisions.md) connect focused commits to observed problems.
+| What to explore | Prepared case and shortest route | What to notice |
+| --- | --- | --- |
+| Intake | **Northstar · October loan launch** → Review case | Select the applicable loan reference and confirm the package. New submissions have no automatically generated findings. |
+| Partial corrections | **Northstar · Fee correction returned** → Review case → Versions | Compare the original and corrected image. Resolve the fee finding; the missing destination still blocks approval. |
+| The submitter's action items | Open the same case's **Submitter page** | See shared requests, reply to a specific request, or update the submitted material. Internal reasoning is absent from this view. |
+| Returned evidence | **Northstar · Destination evidence received** → Assess responses | Read the answer and both PDF pages beside the creative. Including this existing attachment in a new package is explicit; receiving it does not resolve the finding. |
+| A decision awaiting communication | **ClearPath · October social handoff** → Prepare decision message | Inspect the saved reply and scope, then deliberately share. Saving a draft alone does not communicate the decision. |
+| A completed review | **Northstar · October campaign approved** → either side | Inspect the shared approval, exact files, scope, accepted requests, and preserved earlier versions. |
+| A source withdrawn after approval | **Northstar · Offer reference withdrawn** → Prepare decision message | Sharing the old approval is blocked. A replacement source and fresh review are required; the earlier decision remains in history. |
+| Retrieve the evidence record | Any case → **History & notes → Download internal record** | Download original files, reference documents, revisions, decisions, and handoffs. The ZIP contains internal reasoning; it is not an affiliate reply. |
 
-The latest [approval-sharing decision](docs/approval-sharing-decision.md) explains why a withdrawn source requires fresh review before another approval can be shared. The [compliance-review follow-up](docs/compliance-review-follow-up.md) covers the card example's required disclosure finding and clearer scope prompts. [Further findings](docs/focused-follow-up-findings.md) distinguish reproduced gaps from proposed product additions; those recommendations are not implemented features.
+For the full loop from a blank submission, follow the [walkthrough](docs/demo-walkthrough.md). For rejection, approval withdrawal, source versioning, waiting/ownership, draft recovery, and other paths, use the [flow index](docs/demo-flows.md). [Sample details and repeatable setup](docs/sample-cases.md) explain the prepared stages.
 
-The [final workflow audit](docs/final-workflow-audit.md) records the completed browser walkthrough, the corrected reference PDF preview, remaining workflow defects, and full-product limitations. Passing tests do not imply those remaining gaps are fixed.
+The ten live cases include six added workflow stages, the original loan/card/mortgage examples, and an existing user-created case. They are editable fictional records; another tester may change their state. The card example **Everyday, simply** deliberately leaves a disclosure question unresolved even though the advertised fee matches its reference. The mortgage example **A clearer first step home** is waiting on its destination.
 
-## Current scope
+## Product boundaries and known gaps
 
-Affiliates submit through `/submit` and keep a case return link. Reviewers choose a preserved offer reference, inspect material beside facts and findings, share selected feedback, and reconcile partial revisions. Returned evidence creates review attention and can be inspected beside the creative. Responses never close findings automatically. Decisions identify an exact package and scope; outstanding communication remains actionable until the result is deliberately shared or outside communication of an exact decision message is recorded. Old decisions and withdrawals remain inspectable.
+The core workflow persists real records and files. PNG/JPEG and multipage PDF previews, citations, revisions, feedback, responses, human dispositions, scoped decisions, and ZIP exports are implemented. Offer references contain manually entered facts with preserved sources. Seeded findings are authored examples, not scanner output.
 
-PNG/JPEG and multipage PDF previews work, including selectable embedded PDF text. Other formats remain downloadable. References have manually entered facts and page citations. **History & notes → Download internal record** exports verified original files, source documents, review snapshots, and handoffs. It includes internal reasoning; it is not an external reply.
+**Two important workflow defects remain:** a newly arrived response does not currently gate approval, and changing a shared request's required/advisory status can fail to flag it for re-sharing. The [audit](docs/final-workflow-audit.md) describes their reproductions and smaller remaining issues. These are defects, not deliberate product principles.
 
-Uploads allow up to **10 new files**, **10 MB each**, and **25 MB total per submission or revision**. Email imports, live email, automated compliance checks, AI, and OCR are deferred.
+Email intake and notifications, authentication and partner permissions, automated compliance analysis, OCR/video/live-page capture, campaign expiration/monitoring, and production retention/backup operations are outside this version. Portal sharing is not email delivery. A saved approval is a human decision, not legal certification. No throughput improvement or detection accuracy has been measured.
 
-This is an **unauthenticated, shared demonstration**: use fictional material only. Anyone can open the reviewer dashboard and change records as a simulated participant. Return pages and APIs expose only submitted or deliberately shared material, but they do not secure the separate open reviewer dashboard. Local records and uploads live under the ignored `data/` directory by default; they are not committed to Git.
+## Design and implementation
+
+The [presenter briefing](docs/presenter-briefing.md) explains the reconstructed Excel/email process, stakeholder needs, reviewer judgments, assumptions, and alternatives. The [product story](docs/product-story.md) and [research](docs/research.md) retain the reasoning behind the chosen scope. The private call transcript is not in the repository.
+
+For concrete implementation choices, read the [core workflow decisions](docs/core-workflow-decisions.md), [reviewer decisions](docs/reviewer-workflow-decisions.md), and [submitter decisions](docs/external-workflow-decisions.md). Research informed the information and evidence a reviewer needs; it is not implemented as an exhaustive legal rule engine.
+
+React/Vite provides the interface; Express validates requests; Node's SQLite stores versioned case records; original files are stored separately with hashes. Useful entry points are [API routes](server/app.ts), [state transitions](server/store.ts), [sharing and communication](server/handoffs.ts), and the deliberately separate [submitter response model](server/submitter.ts). Large UI modules and duplicated internal/external form concerns are maintenance work for a later iteration, not a reason to rewrite working flows before submission.
 
 ## Run locally
 
-Use Node.js **24.14.0** (the supported engine range is `>=24.14.0 <25`) and npm.
+Use Node.js **24.14.0** (supported: `>=24.14.0 <25`) and npm.
 
 ```sh
 npm install
-npm run dev
-```
-
-Development uses Vite at `http://localhost:5173` and Express at `http://localhost:3000`. The stack is React, Vite, Tailwind CSS, Express, TypeScript, and Node's built-in SQLite. Persistent local data uses `DATA_DIR`, defaulting to `./data`. Upgrading the original schema creates a `workflow-before-v2-*.sqlite` backup before migration. Existing cases and file IDs are preserved; old findings stay internal until explicitly shared.
-
-For the built application:
-
-```sh
 npm run build
 npm start
 ```
 
-Open `http://localhost:3000`. For temporary public access, Cloudflare Quick Tunnel is the current fallback because ngrok is not configured. With `cloudflared` installed separately:
+Open `http://localhost:3000`. In a second terminal, add the prepared stages with:
+
+```sh
+npm run demo:populate
+```
+
+The script is additive: it skips completed scenarios and never resets work a tester has changed. Local records and uploads use the ignored `data/` directory, or a separate directory selected through `DATA_DIR`. Development uses `npm run dev` (Vite on port 5173, Express on 3000).
+
+For temporary access, with Cloudflare Tunnel installed separately:
 
 ```sh
 cloudflared tunnel --url http://localhost:3000
 ```
 
-The locally downloaded binary is `data/tools/cloudflared`; it is ignored by Git and is not part of a fresh clone. The Mac must remain awake and the application server and tunnel process must remain running. An installed and configured ngrok can also expose port 3000. The temporary link has no uptime guarantee; reopen it before sending it to a reviewer.
-
-## Try the review loop
-
-For a quick tour, use **Sample materials → Try a prepared case**, then choose **Review case** or **Submitter page**. The shared demo has six additional cases covering intake, a partial correction, returned evidence, an unshared decision, a shared approval, and a withdrawn supporting reference. The [sample-case guide](docs/sample-cases.md) explains what to try. With the app running, `npm run demo:populate` adds these stages to a fresh local database without resetting existing work.
-
-Follow the [short walkthrough](docs/demo-walkthrough.md): submit an image, share two requests, return a partial correction, supply the destination PDF, and record and publish a scoped decision. To start with authored material, open **Make room for what’s next**; legacy findings begin Internal, so choose their audience before sharing.
-
-Seeded findings are written examples, not automatically detected results. A fresh submission starts without findings. The goal is a complete review loop, not automatic legal clearance or measured time savings.
+The current local binary is `data/tools/cloudflared`; it is ignored and not part of a fresh clone. An installed/configured ngrok can also expose port 3000.
 
 ## Verification
 
@@ -70,14 +77,8 @@ npm run build
 npm run test:e2e
 ```
 
-The final build and **33 API / 19 browser tests** passed on September 27, 2026. Checks cover actual image/PDF uploads, exact source-page citations, partial corrections, server approval gates, private-field exclusion, frozen shared feedback, draft recovery, stale decision acknowledgment, reference versioning, withdrawal, and ZIP contents/download. Added regressions exercise returned evidence in a waiting case, request lists across feedback batches, changed-reference rechecks, internal and external draft conflicts, explicit inclusion of response files, decision communication bound to an exact message version, withdrawal during an open reply with fresh-review recovery, and the card example's required disclosure finding.
+The latest full verification passed **33 API tests and 20 browser tests**. Coverage includes actual uploads, file/page citations, partial corrections, stale saves, draft reconciliation, privacy boundaries, exact decision-message versions, source withdrawal recovery, and export contents. The [manual audit](docs/final-workflow-audit.md) records the browser walkthrough and its limits. These checks do not establish legal accuracy, security readiness, or measured time savings.
 
-A migration rehearsal preserved all four existing live cases and verified all seven original files by SHA-256. The subsequent core-fix deployment left all four case records byte-for-byte unchanged and verified all seven submitted originals plus three reference originals against their stored hashes. The public queue, submission form, adjacent source preview, current build, API, originals, references, and ZIP download were checked again. These are workflow checks, not legal-accuracy measurements, authenticated access controls, or proof of time savings.
+Browser tests use an isolated server on port 3101 and temporary data. They use Playwright Chromium, falling back to system Chrome on macOS; otherwise install Chromium with `npx playwright install chromium`. Build first so they exercise the current frontend. Type checking also rejects unused imports, locals, and parameters.
 
-The latest refinement added one required finding to the existing card sample through the normal API. Its original package, notes, and previous history were preserved; the other three cases and all three references remained unchanged. All ten stored originals still match their pre-deployment hashes. The public build and new finding were checked again after restarting the server.
-
-Browser tests use a separate server on port 3101 and temporary data. They use Playwright Chromium, falling back to system Chrome on macOS when available; otherwise run `npx playwright install chromium`. Build first so browser tests exercise the current frontend.
-
-The prepared-case addition brings the shared demo to **10 cases and 4 references**. Its six new scenarios were verified separately, including original-file hashes, external views, and repeat setup without duplication. The existing four cases, three references, and ten original files were preserved. The build and the deployed Sample materials shortcuts were checked after the addition. This did not change the remaining workflow defects in the audit.
-
-The subsequent submitter-side refinement adds a visible next-action summary and direct links to both sides of a review. The build and all **20 browser tests** passed, including a new check that receiving an answer, accepting a request, and approving a package remain distinct. See the [external workflow decisions](docs/external-workflow-decisions.md) for the reasoning and limits.
+Adding prepared cases preserved the four existing case records, three original references, and all ten existing files. The setup was run twice to verify it did not duplicate or reset cases. These preservation checks and the live sample links were verified separately.

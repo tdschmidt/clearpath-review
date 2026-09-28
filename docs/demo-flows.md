@@ -1,0 +1,30 @@
+# Flow index for the reviewer
+
+Start in **Sample materials → Try a prepared case**. Choose **Review case** or **Submitter page** to inspect the same record from either side. Those links are the shortest route; no identity selector is needed. The [README tour](../README.md#five-minute-tour-try-both-sides) covers the main story, while this index covers the other working interactions.
+
+All changes are saved in the shared demo. Use fictional material; the sample state may reflect an earlier tester's actions. After acting in one tab, refresh the other using its update button.
+
+| Flow | Where to enter | What to try / boundary |
+| --- | --- | --- |
+| Submit from scratch | Sidebar **Submission form**, or `/submit` | Add an image or advertising copy, offer description, and intended use. Save the return link. The submitter does not need to choose an internal reference. |
+| Find the next owner | **Review queue** → To review / Waiting / Completed / All submissions | Search by campaign or reference and inspect the next action. A recorded decision can remain actionable until communicated. |
+| Inspect a source beside the creative | Any in-review case → **Offer & intended use** → source citation | Open the preserved product document, change PDF pages, and zoom. Facts are human-entered; a reference is not a previously reviewed ad. |
+| Add a finding and share it | **Make room for what's next** → add/edit finding → Audience: Submitter → Prepare feedback | State the concern and private basis separately from the requested action. Deliberate sharing publishes the requests to the return page. Legacy findings initially remain Internal. |
+| Ask for a specialist answer | Finding → **Edit / reassign**, or its response/assessment view | Name the person who owes evidence; an internal response can be recorded without publishing it to the submitter. Identities are simulated; no notification is sent. |
+| Mark waiting and resume | Active case → **Mark waiting** | Name the next owner and reason. Sharing feedback can also set the waiting state. Received evidence creates review attention without resolving findings. |
+| Partial correction | **Northstar · Fee correction returned** → Versions / finding assessment | Compare v1 and v2; only resolve what the reviewer has checked. The remaining required request blocks approval. |
+| Respond without changing creative | **Northstar · Destination evidence received** → Submitter page → Respond | Send an answer or supporting evidence linked to a request. Receipt, assessment, acceptance, and approval are distinct. |
+| Include returned material in the package | Same case → **Add revision** | Select the already-returned PDF with the Destination role, retain the current image, and save. Confirm intake before disposing of the request. Set “Updated by” accurately; its current internal default is a known defect. |
+| Record a final decision | Active case → **Record decision** | Approval needs intake, human acknowledgment, scope, and resolved required findings. Rejection can be recorded with a reason. A pending-response approval gap is documented in the audit. |
+| Share the decision | **ClearPath · October social handoff** → Prepare decision message | Inspect the saved text and exact scope; sharing publishes on the return page. It sends no email. |
+| Record an outside handoff | Same case → **Record outside communication** | Select the exact saved message version and record an actual communication. The app does not verify delivery; copying text alone is not a send record. |
+| Review an approval later | **Decision record**, or **Northstar · October campaign approved** → View decision | Inspect the decision's package, reference snapshot, findings, and scope. A later revision cannot inherit this approval. |
+| Withdraw an approval | That decision → **Withdraw approval** | Supply a reason. The historic decision remains, and an already-shared result is marked withdrawn on the submitter page. This changes the sample; use only if you intend to exercise it. |
+| Handle a withdrawn supporting reference | **Northstar · Offer reference withdrawn** → Prepare decision message | Inspect the sharing block. Add a new revision with the available Standard reference, confirm intake, recheck findings, and record a new decision before sharing approval. |
+| Create or version reference material | Sidebar **Offer references** → New reference / Create new version | Upload a source, enter facts and page citations, and record applicability. New source versions remain separate from earlier records. Selecting Withdraw affects records using that exact reference. |
+| Correct contact data or manage access links | Case → **Case details** | Correct the name/contact with a reason, assign a reviewer, or create/copy/replace the return link. Replacing a link invalidates the previous one. No authentication or recipient verification is implied. |
+| Cancel a request | Active case → **Case details** → cancellation control | Record why review is no longer needed. An approved case requires withdrawing its approval before cancellation. |
+| Recover a draft or handle concurrent changes | Use a fresh case, open its revision form in two tabs | Save a revision in one tab, then try the other. Conflicting text needs an explicit choice; unchanged fields use current data. Refresh restores text drafts, but files need reselecting. This is easier to inspect in the automated tests than in a quick tour. |
+| Export the record | Case → **History & notes → Download internal record** | The ZIP preserves files, source documents, versions, decisions, and handoffs. It includes internal reasoning and is unsuitable as an affiliate reply. It excludes return tokens and private note records. |
+
+The full interactive correction walkthrough is [here](demo-walkthrough.md). The [sample guide](sample-cases.md) explains each prepared state. The [audit](final-workflow-audit.md) identifies what still does not work as it should; this index is not a claim of production completeness.
