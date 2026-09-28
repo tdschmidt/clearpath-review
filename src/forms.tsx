@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -101,8 +107,14 @@ export function SubmissionForm({
     destinationUrl: previous?.destinationUrl || "",
     fileRoles: [],
   });
-  const [files, setFiles] = useDraftState<{ file: File; role: AssetRole; replaces?: string }[]>(draftKey + "files", [], true);
-  const [retained, setRetained] = useDraftState(draftKey + "retained", previous?.components || [], true);
+  const [files, setFiles] = useDraftState<
+    { file: File; role: AssetRole; replaces?: string }[]
+  >(draftKey + "files", [], true);
+  const [retained, setRetained] = useDraftState(
+    draftKey + "retained",
+    previous?.components || [],
+    true,
+  );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -188,8 +200,10 @@ export function SubmissionForm({
             intendedUse: data.intendedUse,
             copy: data.copy,
             destinationUrl: data.destinationUrl,
-            product: data.product, channel: data.channel, launchDate: data.launchDate,
-            replacements: files.map(f => f.replaces || null),
+            product: data.product,
+            channel: data.channel,
+            launchDate: data.launchDate,
+            replacements: files.map((f) => f.replaces || null),
             fileRoles: files.map((f) => f.role),
             retainedComponents: retained,
             expectedVersion: existing.version,
@@ -219,7 +233,9 @@ export function SubmissionForm({
       if (e instanceof ApiError && e.status === 409 && existing && onLatest) {
         const latest = await api<ReviewCase>(`/api/cases/${existing.id}`);
         onLatest(latest);
-        setError(`This case changed. Version ${currentRevision(latest).number} is now loaded. Your text and uploads were kept; reconcile the retained files and context before saving again.`);
+        setError(
+          `This case changed. Version ${currentRevision(latest).number} is now loaded. Your text and uploads were kept; reconcile the retained files and context before saving again.`,
+        );
       } else setError((e as Error).message);
     } finally {
       setBusy(false);
@@ -276,20 +292,20 @@ export function SubmissionForm({
             )}
             <div className="form-grid">
               <Field label="Product">
-                  <select
-                    value={data.product}
-                    onChange={(e) => {
-                      update("product", e.target.value as Product);
-                      update("offerId", "");
-                    }}
-                  >
-                    {Object.entries(PRODUCT_LABELS).map(([v, label]) => (
-                      <option key={v} value={v}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                <select
+                  value={data.product}
+                  onChange={(e) => {
+                    update("product", e.target.value as Product);
+                    update("offerId", "");
+                  }}
+                >
+                  {Object.entries(PRODUCT_LABELS).map(([v, label]) => (
+                    <option key={v} value={v}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <Field
                 label="Offer reference"
                 hint="Missing facts can be requested during intake."
@@ -309,32 +325,32 @@ export function SubmissionForm({
                 </select>
               </Field>
             </div>
-              <div className="form-grid">
-                <Field label="Placement">
-                  <select
-                    value={data.channel}
-                    onChange={(e) => update("channel", e.target.value)}
-                  >
-                    {[
-                      "Paid social",
-                      "Organic social",
-                      "Landing page",
-                      "Display advertising",
-                      "Marketing email",
-                      "Other",
-                    ].map((v) => (
-                      <option key={v}>{v}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Target launch date · optional">
-                  <input
-                    type="date"
-                    value={data.launchDate}
-                    onChange={(e) => update("launchDate", e.target.value)}
-                  />
-                </Field>
-              </div>
+            <div className="form-grid">
+              <Field label="Placement">
+                <select
+                  value={data.channel}
+                  onChange={(e) => update("channel", e.target.value)}
+                >
+                  {[
+                    "Paid social",
+                    "Organic social",
+                    "Landing page",
+                    "Display advertising",
+                    "Marketing email",
+                    "Other",
+                  ].map((v) => (
+                    <option key={v}>{v}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Target launch date · optional">
+                <input
+                  type="date"
+                  value={data.launchDate}
+                  onChange={(e) => update("launchDate", e.target.value)}
+                />
+              </Field>
+            </div>
             <Field
               label="Intended use"
               hint="Include placement, audience/geography, and any affiliate, targeting, or compensation context that matters. Note what is still unknown."
@@ -365,26 +381,89 @@ export function SubmissionForm({
                   );
                   return (
                     <div className="retain-row" key={comp.assetId}>
-                      <span>{asset.name}<small>{included ? "Kept in this version" : files.some(f => f.replaces === comp.assetId) ? "Replacement selected" : "Removed from this version"}</small></span>
-                      <select aria-label={`Role for retained ${asset.name}`} disabled={!included} value={retained.find(c => c.assetId === comp.assetId)?.role || comp.role} onChange={e => setRetained(old => old.map(c => c.assetId === comp.assetId ? {...c, role: e.target.value as AssetRole} : c))}>{Object.entries(ROLE_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
-                      <button type="button" className="button secondary" disabled={busy} onClick={() => {
-                        setFiles(old => old.filter(f => f.replaces !== comp.assetId));
-                        setRetained(old => included ? old.filter(c => c.assetId !== comp.assetId) : [...old, comp]);
-                      }}>{included ? "Remove" : "Keep"}</button>
-                      <label className="button secondary">Replace<input type="file" hidden disabled={busy} onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        if (file.size > 10 * 1024 * 1024) { setError("Each file must be 10 MB or smaller."); return; }
-                        const role = retained.find(c => c.assetId === comp.assetId)?.role || comp.role;
-                        setFiles(old => [...old.filter(f => f.replaces !== comp.assetId), {file, role, replaces: comp.assetId}]);
-                        setRetained(old => old.filter(c => c.assetId !== comp.assetId));
-                        e.target.value = "";
-                      }}/></label>
+                      <span>
+                        {asset.name}
+                        <small>
+                          {included
+                            ? "Kept in this version"
+                            : files.some((f) => f.replaces === comp.assetId)
+                              ? "Replacement selected"
+                              : "Removed from this version"}
+                        </small>
+                      </span>
+                      <select
+                        aria-label={`Role for retained ${asset.name}`}
+                        disabled={!included}
+                        value={
+                          retained.find((c) => c.assetId === comp.assetId)
+                            ?.role || comp.role
+                        }
+                        onChange={(e) =>
+                          setRetained((old) =>
+                            old.map((c) =>
+                              c.assetId === comp.assetId
+                                ? { ...c, role: e.target.value as AssetRole }
+                                : c,
+                            ),
+                          )
+                        }
+                      >
+                        {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="button secondary"
+                        disabled={busy}
+                        onClick={() => {
+                          setFiles((old) =>
+                            old.filter((f) => f.replaces !== comp.assetId),
+                          );
+                          setRetained((old) =>
+                            included
+                              ? old.filter((c) => c.assetId !== comp.assetId)
+                              : [...old, comp],
+                          );
+                        }}
+                      >
+                        {included ? "Remove" : "Keep"}
+                      </button>
+                      <label className="button secondary">
+                        Replace
+                        <input
+                          type="file"
+                          hidden
+                          disabled={busy}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (file.size > 10 * 1024 * 1024) {
+                              setError("Each file must be 10 MB or smaller.");
+                              return;
+                            }
+                            const role =
+                              retained.find((c) => c.assetId === comp.assetId)
+                                ?.role || comp.role;
+                            setFiles((old) => [
+                              ...old.filter((f) => f.replaces !== comp.assetId),
+                              { file, role, replaces: comp.assetId },
+                            ]);
+                            setRetained((old) =>
+                              old.filter((c) => c.assetId !== comp.assetId),
+                            );
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
                     </div>
                   );
                 })}
                 <small>
-                  Replacing removes the earlier file from this version only. All originals remain in history.
+                  Replacing removes the earlier file from this version only. All
+                  originals remain in history.
                 </small>
               </div>
             )}
@@ -561,226 +640,23 @@ export function SubmissionForm({
           >
             Cancel
           </button>
-          <button type="button" className="text-button" disabled={busy} onClick={() => { if (confirm("Discard this unfinished submission?")) { clearDrafts(draftKey); onClose(); } }}>Discard draft</button>
+          <button
+            type="button"
+            className="text-button"
+            disabled={busy}
+            onClick={() => {
+              if (confirm("Discard this unfinished submission?")) {
+                clearDrafts(draftKey);
+                onClose();
+              }
+            }}
+          >
+            Discard draft
+          </button>
           <Submit busy={busy}>
             {existing ? "Save new version" : "Create submission"}
             <ArrowRight size={16} />
           </Submit>
-        </footer>
-      </form>
-    </Modal>
-  );
-}
-
-export function FindingForm({ review, onAction, onClose }: ActionProps) {
-  const rev = currentRevision(review);
-  const [data, setData] = useState<FindingInput>({
-    kind: "correction",
-    title: "",
-    detail: "",
-    request: "",
-    location: "",
-    assetId: rev.components.find((c) => c.role === "creative")?.assetId || "",
-    owner: review.submitter,
-    material: true,
-  });
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const set = <K extends keyof FindingInput>(k: K, v: FindingInput[K]) =>
-    setData((d) => ({ ...d, [k]: v }));
-  return (
-    <Modal
-      title="Add a reviewer finding"
-      description={`Version ${rev.number}`}
-      onClose={onClose}
-      busy={busy}
-    >
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setBusy(true);
-          setError("");
-          try {
-            await onAction({ type: "add_finding", finding: data });
-            onClose();
-          } catch (e) {
-            setError((e as Error).message);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <div className="modal-body">
-          <Field label="Type">
-            <select
-              value={data.kind}
-              onChange={(e) =>
-                set("kind", e.target.value as FindingInput["kind"])
-              }
-            >
-              <option value="correction">Correction needed</option>
-              <option value="evidence">Missing evidence</option>
-              <option value="question">Specialist question</option>
-            </select>
-          </Field>
-          <Field label="Finding">
-            <input
-              required
-              maxLength={180}
-              autoFocus
-              placeholder="e.g. Origination fee claim needs clarification"
-              value={data.title}
-              onChange={(e) => set("title", e.target.value)}
-            />
-          </Field>
-          <div className="form-grid">
-            <Field label="Related material">
-              <select
-                value={data.assetId}
-                onChange={(e) => set("assetId", e.target.value)}
-              >
-                <option value="">Whole package / accompanying copy</option>
-                {rev.components
-                  .filter((c) => c.role !== "excluded")
-                  .map((c) => (
-                    <option value={c.assetId} key={c.assetId}>
-                      {review.assets.find((a) => a.id === c.assetId)?.name}
-                    </option>
-                  ))}
-              </select>
-            </Field>
-            <Field label="Location · optional">
-              <input
-                placeholder="Page 1, headline"
-                value={data.location}
-                onChange={(e) => set("location", e.target.value)}
-              />
-            </Field>
-          </div>
-          <Field label="Observation and supporting basis">
-            <textarea
-              required
-              rows={3}
-              maxLength={4000}
-              placeholder="What did you notice? Name the offer fact, policy, or evidence behind the concern."
-              value={data.detail}
-              onChange={(e) => set("detail", e.target.value)}
-            />
-          </Field>
-          <Field label="Requested action">
-            <textarea
-              required
-              rows={2}
-              maxLength={3000}
-              placeholder="What should the recipient change or provide?"
-              value={data.request}
-              onChange={(e) => set("request", e.target.value)}
-            />
-          </Field>
-          <Field label="Who owns the next step?">
-            <input
-              required
-              value={data.owner}
-              onChange={(e) => set("owner", e.target.value)}
-            />
-          </Field>
-          <label className="check-line">
-            <input
-              type="checkbox"
-              checked={data.material}
-              onChange={(e) => set("material", e.target.checked)}
-            />
-            <span>
-              Must be addressed before approval
-              <small>Leave unchecked for an advisory comment.</small>
-            </span>
-          </label>
-          <ErrorMessage error={error} />
-        </div>
-        <footer className="modal-footer">
-          <button className="button secondary" type="button" onClick={onClose} disabled={busy}>
-            Cancel
-          </button>
-          <Submit busy={busy}>
-            <Plus size={16} />
-            Add finding
-          </Submit>
-        </footer>
-      </form>
-    </Modal>
-  );
-}
-
-export function DispositionForm({
-  review,
-  finding,
-  status,
-  onAction,
-  onClose,
-}: ActionProps & { finding: Finding; status: Finding["status"] }) {
-  const [reason, setReason] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const label =
-    status === "resolved"
-      ? "Resolve finding"
-      : status === "dismissed"
-        ? "Dismiss finding"
-        : "Reopen finding";
-  return (
-    <Modal
-      title={label}
-      description={`F${String(finding.number).padStart(2, "0")} · ${finding.title}`}
-      onClose={onClose}
-      busy={busy}
-    >
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setBusy(true);
-          try {
-            await onAction({
-              type: "disposition",
-              findingId: finding.id,
-              status,
-              reason,
-            });
-            onClose();
-          } catch (e) {
-            setError((e as Error).message);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <div className="modal-body">
-          <div className="context-callout">
-            This records your assessment against version{" "}
-            {currentRevision(review).number}. Inspect the relevant material
-            before continuing.
-          </div>
-          <Field
-            label={
-              status === "resolved"
-                ? "What changed or what evidence resolves this?"
-                : "Reason"
-            }
-          >
-            <textarea
-              required
-              autoFocus
-              rows={4}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </Field>
-          <ErrorMessage error={error} />
-        </div>
-        <footer className="modal-footer">
-          <button className="button secondary" type="button" onClick={onClose} disabled={busy}>
-            Cancel
-          </button>
-          <Submit busy={busy}>{label}</Submit>
         </footer>
       </form>
     </Modal>
@@ -833,7 +709,12 @@ export function WaitingForm({ review, onAction, onClose }: ActionProps) {
           <ErrorMessage error={error} />
         </div>
         <footer className="modal-footer">
-          <button className="button secondary" type="button" onClick={onClose} disabled={busy}>
+          <button
+            className="button secondary"
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+          >
             Cancel
           </button>
           <Submit busy={busy}>Mark waiting</Submit>
@@ -843,7 +724,12 @@ export function WaitingForm({ review, onAction, onClose }: ActionProps) {
   );
 }
 
-export function DecisionForm({ review, onAction, onClose, reviewerName = REVIEWER }: ActionProps) {
+export function DecisionForm({
+  review,
+  onAction,
+  onClose,
+  reviewerName = REVIEWER,
+}: ActionProps) {
   const rev = currentRevision(review),
     blockers = openBlockers(review),
     confirmed = review.confirmedRevisionId === rev.id;
@@ -970,10 +856,27 @@ export function DecisionForm({ review, onAction, onClose, reviewerName = REVIEWE
           <ErrorMessage error={error} />
         </div>
         <footer className="modal-footer">
-          <button className="button secondary" type="button" onClick={onClose} disabled={busy}>
+          <button
+            className="button secondary"
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+          >
             Back to review
           </button>
-          <button type="button" className="text-button" disabled={busy} onClick={() => { if (confirm("Discard this unfinished decision?")) { clearDrafts(draftKey); onClose(); } }}>Discard draft</button>
+          <button
+            type="button"
+            className="text-button"
+            disabled={busy}
+            onClick={() => {
+              if (confirm("Discard this unfinished decision?")) {
+                clearDrafts(draftKey);
+                onClose();
+              }
+            }}
+          >
+            Discard draft
+          </button>
           <button
             className={`button ${outcome === "approved" ? "primary" : "danger"}`}
             type="submit"
@@ -992,76 +895,107 @@ export function DecisionForm({ review, onAction, onClose, reviewerName = REVIEWE
   );
 }
 
-function draftText(review: ReviewCase, selected: string[]) {
+function draftText(
+  review: ReviewCase,
+  selected: string[],
+  reviewerName: string,
+) {
   const rev = currentRevision(review);
-  const names = rev.components
-    .filter((c) => c.role !== "excluded")
-    .map((c) => review.assets.find((a) => a.id === c.assetId)?.name)
-    .filter(Boolean)
-    .join(", ");
-  const decision = review.decisions.findLast((d) => d.revisionId === rev.id);
-  const intro = `Hi ${review.submitter},\n\nRegarding ${review.title} (${review.reference}, version ${rev.number})${names ? ` — ${names}` : ""}:`;
-  const details = decision
-    ? decision.outcome === "approved"
-      ? `\n\nApproved for the following use: ${decision.scope}\n\nPlease resubmit any changes for review before use.`
-      : `\n\nThis version was not approved.${decision.scope ? `\n\nReviewed scope: ${decision.scope}` : ""}\n\nPlease contact us to discuss the next steps.`
-    : `\n\nPlease address the following before we complete the review:\n\n${review.findings
-        .filter((f) => selected.includes(f.id))
-        .map(
-          (f, i) =>
-            `${i + 1}. ${f.title}${f.location ? ` (${f.location})` : ""}\n${f.request}`,
-        )
-        .join(
-          "\n\n",
-        )}\n\nPlease return the updated material and any requested supporting evidence.`;
-  return `${intro}${details}\n\nThank you,\n${REVIEWER}\nClearPath Marketing Compliance`;
+  const eligible = review.findings.filter(
+    (f) =>
+      f.audience === "submitter" &&
+      selected.includes(f.id) &&
+      (f.status === "open" || f.needsRecheck),
+  );
+  if (!eligible.length) return "";
+  const group = (required: boolean) =>
+    eligible
+      .filter((f) => f.material === required)
+      .map(
+        (f) =>
+          `• ${f.title}${f.location ? ` (${f.location})` : ""}\n${f.request}`,
+      )
+      .join("\n\n");
+  return `Hi ${review.submitter},\n\nRegarding ${review.title} (${review.reference}, version ${rev.number}):${group(true) ? `\n\nRequired before approval\n${group(true)}` : ""}${group(false) ? `\n\nAdvice\n${group(false)}` : ""}\n\n${reviewerName}\nClearPath Marketing Compliance`;
 }
-export function DraftForm({ review, onAction, onClose }: ActionProps) {
+export function DraftForm({
+  review,
+  onAction,
+  onClose,
+  reviewerName = REVIEWER,
+  draftId,
+}: ActionProps & { draftId?: string }) {
   const rev = currentRevision(review);
+  const existing = review.drafts.find((d) => d.id === draftId);
+  const historical = !!existing && existing.revisionId !== rev.id;
+  const draftKey = `reply/${review.id}/${draftId || "new"}/`;
   const pending = review.findings.filter(
-    (f) => f.status === "open" || f.needsRecheck,
+    (f) =>
+      f.audience === "submitter" && (f.status === "open" || f.needsRecheck),
   );
-  const [selected, setSelected] = useState(pending.map((f) => f.id));
-  const [subject, setSubject] = useState(
-    `${review.reference} · ${review.title} · Review feedback`,
+  const [selected, setSelected] = useDraftState(
+    draftKey + "selected",
+    existing?.findingIds || pending.map((f) => f.id),
   );
-  const [body, setBody] = useState(() =>
-    draftText(
-      review,
-      pending.map((f) => f.id),
-    ),
+  const [subject, setSubject] = useDraftState(
+    draftKey + "subject",
+    existing?.subject ||
+      `${review.reference} · ${review.title} · Review feedback`,
   );
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [body, setBody] = useDraftState(
+    draftKey + "body",
+    () =>
+      existing?.body ||
+      draftText(
+        review,
+        pending.map((f) => f.id),
+        reviewerName,
+      ),
+  );
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const hasDecision = review.decisions.some((d) => d.revisionId === rev.id);
-  function changeSelected(id: string) {
-    const next = selected.includes(id)
-      ? selected.filter((s) => s !== id)
-      : [...selected, id];
-    setSelected(next);
-    setBody(draftText(review, next));
+  const [reconciled, setReconciled] = useState(!historical);
+  const decision = review.decisions.findLast(
+    (d) => d.revisionId === rev.id && !d.withdrawn,
+  );
+  async function run(action: ActionInput) {
+    setBusy(true);
+    setError("");
+    try {
+      await onAction(action);
+      clearDrafts(draftKey);
+      onClose();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <Modal
-      title="Prepare a reply"
-      description="Review the wording before copying it to your email client. Nothing is sent from this workspace."
+      title={
+        existing
+          ? historical
+            ? "Reuse earlier reply"
+            : "Edit reply draft"
+          : "Prepare a reply"
+      }
+      description={`For ${review.reference}, version ${rev.number}. Sharing publishes to the submission link; it does not send an email.`}
       onClose={onClose}
-      wide
       busy={busy}
+      wide
     >
       <form
-        onSubmit={async (e) => {
+        onSubmit={(e) => {
           e.preventDefault();
-          setBusy(true);
-          try {
-            await onAction({ type: "save_draft", subject, body });
-            onClose();
-          } catch (e) {
-            setError((e as Error).message);
-          } finally {
-            setBusy(false);
-          }
+          void run({
+            type: "save_draft",
+            draftId: historical ? undefined : existing?.id,
+            subject,
+            body,
+            findingIds: selected,
+          });
         }}
       >
         <div className="modal-body">
@@ -1070,27 +1004,75 @@ export function DraftForm({ review, onAction, onClose }: ActionProps) {
             <strong>{review.submitter}</strong>
             <span>{review.submitterEmail || "Email not provided"}</span>
           </div>
-          {!hasDecision && pending.length > 0 && (
-            <details className="draft-select">
-              <summary>Include findings · {selected.length} selected</summary>
-              <p>
-                Changing this selection regenerates the suggested wording below.
-              </p>
+          {historical && (
+            <label className="check-line">
+              <input
+                type="checkbox"
+                checked={reconciled}
+                onChange={(e) => setReconciled(e.target.checked)}
+              />
+              <span>
+                This text came from an earlier version. I have checked and
+                updated it for version {rev.number}. Saving creates a new draft.
+              </span>
+            </label>
+          )}
+          {pending.length > 0 && (
+            <details className="draft-select" open>
+              <summary>
+                Submitter requests ·{" "}
+                {
+                  selected.filter((id) => pending.some((f) => f.id === id))
+                    .length
+                }{" "}
+                selected
+              </summary>
               {pending.map((f) => (
                 <label className="check-line" key={f.id}>
                   <input
                     type="checkbox"
                     checked={selected.includes(f.id)}
-                    onChange={() => changeSelected(f.id)}
+                    onChange={() =>
+                      setSelected((old) =>
+                        old.includes(f.id)
+                          ? old.filter((id) => id !== f.id)
+                          : [...old, f.id],
+                      )
+                    }
                   />
-                  <span>{f.title}</span>
+                  <span>
+                    {f.title} · {f.material ? "Required" : "Advice"}
+                  </span>
                 </label>
               ))}
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy}
+                onClick={() => {
+                  if (
+                    !body ||
+                    confirm(
+                      "Replace the message with wording from the selected requests? Your edits will be replaced.",
+                    )
+                  )
+                    setBody(draftText(review, selected, reviewerName));
+                }}
+              >
+                Update message from requests
+              </button>
             </details>
+          )}
+          {!pending.length && !existing && (
+            <p className="small-muted">
+              No submitter requests selected. Write a message or share the
+              recorded decision below.
+            </p>
           )}
           <Field label="Subject">
             <input
               required
+              maxLength={300}
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
             />
@@ -1099,22 +1081,55 @@ export function DraftForm({ review, onAction, onClose }: ActionProps) {
             <textarea
               required
               className="draft-body"
-              rows={14}
+              rows={10}
+              maxLength={20000}
               value={body}
               onChange={(e) => setBody(e.target.value)}
             />
           </Field>
           <p className="small-muted">
-            The draft includes selected requested actions or the recorded
-            outcome and scope. Internal notes and decision rationale stay in the
-            workspace. Edit the message before sharing.
+            Only selected submitter requests and this message will be shared.
+            Internal bases and notes are excluded. Check any wording you add.
           </p>
+          {decision && (
+            <div className="decision-package">
+              <div>
+                <strong>
+                  Recorded{" "}
+                  {decision.outcome === "approved" ? "approval" : "rejection"} ·
+                  version {rev.number}
+                </strong>
+                <p>{decision.scope}</p>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={busy || !reconciled || !review.submitterToken}
+                  onClick={() =>
+                    void run({
+                      type: "publish_result",
+                      decisionId: decision.id,
+                      message: body,
+                    })
+                  }
+                >
+                  Share decision on submission link
+                </button>
+              </div>
+            </div>
+          )}
+          {!review.submitterToken && (
+            <p className="small-muted">
+              Create a submission link in the case before sharing feedback or a
+              result.
+            </p>
+          )}
           <ErrorMessage error={error} />
         </div>
         <footer className="modal-footer">
           <button
             type="button"
             className="button secondary"
+            disabled={busy || !body}
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(
@@ -1122,18 +1137,16 @@ export function DraftForm({ review, onAction, onClose }: ActionProps) {
                 );
                 setCopied(true);
               } catch {
-                setError(
-                  "Clipboard is unavailable. Select the message to copy it manually.",
-                );
+                setError("Clipboard unavailable. Select the text to copy it.");
               }
             }}
           >
-            {copied ? <Check size={16} /> : <Copy size={16} />}
             {copied ? "Copied" : "Copy reply"}
           </button>
           <button
             type="button"
             className="button secondary"
+            disabled={busy || !body}
             onClick={() => {
               const url = URL.createObjectURL(
                 new Blob([`Subject: ${subject}\n\n${body}`], {
@@ -1147,10 +1160,51 @@ export function DraftForm({ review, onAction, onClose }: ActionProps) {
               setTimeout(() => URL.revokeObjectURL(url), 1000);
             }}
           >
-            <Download size={16} />
             Download
           </button>
-          <Submit busy={busy}>Save draft</Submit>
+          <button
+            type="button"
+            className="text-button"
+            disabled={busy}
+            onClick={() => {
+              if (confirm("Discard this unfinished reply?")) {
+                clearDrafts(draftKey);
+                onClose();
+              }
+            }}
+          >
+            Discard edits
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={
+              busy ||
+              !reconciled ||
+              !body.trim() ||
+              !subject.trim() ||
+              !review.submitterToken
+            }
+            onClick={() =>
+              void run({
+                type: "publish_feedback",
+                findingIds: selected.filter((id) =>
+                  pending.some((f) => f.id === id),
+                ),
+                subject,
+                body,
+              })
+            }
+          >
+            Share feedback on submission link
+          </button>
+          <button
+            type="submit"
+            className="button primary"
+            disabled={busy || !reconciled}
+          >
+            {busy ? "Saving…" : "Save draft"}
+          </button>
         </footer>
       </form>
     </Modal>

@@ -1,0 +1,162 @@
+import { useState } from "react";
+import { Modal, ErrorMessage } from "./components";
+import { Field, type ActionInput } from "./forms";
+import type { ReviewCase } from "../shared/types";
+
+export function CommunicationForm({
+  review,
+  onAction,
+  onClose,
+}: {
+  review: ReviewCase;
+  onAction: (action: ActionInput) => Promise<void>;
+  onClose: () => void;
+}) {
+  const messages = [
+    ...review.drafts.map((d) => ({
+      id: d.id,
+      version: d.version || 1,
+      label: `Draft: ${d.subject} · revision ${review.revisions.find((r) => r.id === d.revisionId)?.number} · message version ${d.version || 1}`,
+      body: d.body,
+    })),
+    ...(review.publishedFeedback || []).map((f) => ({
+      id: f.id,
+      version: 1,
+      label: `Shared feedback: ${f.subject}`,
+      body: f.body,
+    })),
+    ...(review.publishedResults || []).map((r) => ({
+      id: r.id,
+      version: 1,
+      label: `Shared result: ${r.outcome} · revision ${review.revisions.find((v) => v.id === r.revisionId)?.number}`,
+      body: r.message,
+    })),
+  ];
+  const [messageId, setMessageId] = useState(messages.at(-1)?.id || "");
+  const [recipient, setRecipient] = useState(
+    review.submitterEmail || review.submitter,
+  );
+  const [channel, setChannel] = useState("Email");
+  const [occurredAt, setOccurredAt] = useState(() =>
+    new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16),
+  );
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const message = messages.find((m) => m.id === messageId);
+  return (
+    <Modal
+      title="Record outside communication"
+      description="Record a message you already communicated outside this app. This does not send it or verify delivery."
+      onClose={onClose}
+      busy={busy}
+    >
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (!message) return;
+          setBusy(true);
+          setError("");
+          try {
+            await onAction({
+              type: "record_communication",
+              messageId,
+              messageVersion: message.version,
+              recipient,
+              channel,
+              occurredAt: new Date(occurredAt).toISOString(),
+              note,
+            });
+            onClose();
+          } catch (e) {
+            setError((e as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <div className="modal-body">
+          {!messages.length && (
+            <p>
+              Save a reply or share feedback first so this record can identify
+              the exact message.
+            </p>
+          )}
+          <Field label="Message">
+            <select
+              required
+              value={messageId}
+              onChange={(e) => setMessageId(e.target.value)}
+            >
+              {messages.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {message && (
+            <details>
+              <summary>Message text</summary>
+              <p className="preserve-lines">
+                {message.body || "Decision scope and reviewed material."}
+              </p>
+            </details>
+          )}
+          <Field label="Recipient">
+            <input
+              required
+              maxLength={200}
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+            />
+          </Field>
+          <div className="form-grid">
+            <Field label="Channel">
+              <select
+                value={channel}
+                onChange={(e) => setChannel(e.target.value)}
+              >
+                {["Email", "Phone", "Other"].map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="When communicated">
+              <input
+                type="datetime-local"
+                required
+                value={occurredAt}
+                onChange={(e) => setOccurredAt(e.target.value)}
+              />
+            </Field>
+          </div>
+          <Field label="Record note · optional">
+            <textarea
+              maxLength={2000}
+              rows={3}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </Field>
+          <ErrorMessage error={error} />
+        </div>
+        <footer className="modal-footer">
+          <button
+            type="button"
+            disabled={busy}
+            className="button secondary"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button className="button primary" disabled={busy || !message}>
+            Record communication
+          </button>
+        </footer>
+      </form>
+    </Modal>
+  );
+}
