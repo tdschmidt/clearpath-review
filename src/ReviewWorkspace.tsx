@@ -212,10 +212,12 @@ export function ReviewWorkspace({
     setTab("review");
     setEvidence({ assetId, page: 1 });
     setSource(null);
+    focusPanel("review-evidence");
   }
   function openSource(citation: SourceCitation) {
     setSource(citation);
     setEvidence(null);
+    focusPanel("review-source");
   }
   function showCurrentFinding(finding: Finding) {
     const component = currentFindingAsset(review, finding);
@@ -235,6 +237,7 @@ export function ReviewWorkspace({
         page: citation?.page || 1,
         title: `Original material · version ${review.revisions.find((r) => r.id === (citation?.revisionId || finding.revisionId))?.number || "?"}`,
       });
+      focusPanel("review-evidence");
     }
   }
   function assessFinding(finding: Finding) {
@@ -243,6 +246,14 @@ export function ReviewWorkspace({
     setAssessingId(finding.id);
     showCurrentFinding(finding);
     if (finding.revisionId !== rev.id) compareOriginal(finding);
+    focusPanel("finding-assessment");
+  }
+  function focusPanel(id: string) {
+    requestAnimationFrame(() => {
+      const panel = document.getElementById(id);
+      panel?.focus({ preventScroll: true });
+      panel?.scrollIntoView({ block: "nearest" });
+    });
   }
   function showDecision(decision: Decision) {
     setDecisionId(decision.id);
@@ -574,7 +585,11 @@ export function ReviewWorkspace({
             </form>
           )}
           <div className={`rw-grid ${source || evidence ? "with-source" : ""}`}>
-            <section className="rw-material panel">
+            <section
+              className="rw-material panel"
+              id="review-material"
+              tabIndex={-1}
+            >
               <header className="panel-header">
                 <div>
                   <h2>Submitted material</h2>
@@ -612,7 +627,11 @@ export function ReviewWorkspace({
               />
             </section>
             {source && (
-              <section className="rw-source panel">
+              <section
+                className="rw-source panel"
+                id="review-source"
+                tabIndex={-1}
+              >
                 <header className="panel-header">
                   <div>
                     <h2>Source</h2>
@@ -655,6 +674,8 @@ export function ReviewWorkspace({
               <section
                 className="rw-source panel"
                 aria-label="Supporting evidence"
+                id="review-evidence"
+                tabIndex={-1}
               >
                 <header className="panel-header">
                   <div>
@@ -669,6 +690,15 @@ export function ReviewWorkspace({
                     <X size={17} />
                   </button>
                 </header>
+                {assessingId && (
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => focusPanel("finding-assessment")}
+                  >
+                    Back to finding assessment
+                  </button>
+                )}
                 {evidenceAsset ? (
                   <AssetViewer
                     caseId={review.id}
@@ -698,7 +728,10 @@ export function ReviewWorkspace({
                   onAction={onAction}
                   onEvidence={openEvidence}
                   onOriginal={() => compareOriginal(assessingFinding)}
-                  onCurrent={() => showCurrentFinding(assessingFinding)}
+                  onCurrent={() => {
+                    showCurrentFinding(assessingFinding);
+                    focusPanel("review-material");
+                  }}
                   onDisposition={(status) =>
                     setEditor({
                       mode: "disposition",

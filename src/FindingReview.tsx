@@ -63,7 +63,11 @@ export function FindingReview({
     (r) => r.id === (original?.revisionId || finding.revisionId),
   );
   return (
-    <section className="panel rw-assessment">
+    <section
+      className="panel rw-assessment"
+      id="finding-assessment"
+      tabIndex={-1}
+    >
       <header className="panel-header">
         <div>
           <h2>
@@ -195,7 +199,7 @@ export function FindingReview({
               disabled={saving}
               onClick={onClose}
             >
-              Keep open / return
+              Return without changing status
             </button>
           </div>
         )}
