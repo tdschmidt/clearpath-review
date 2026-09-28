@@ -26,7 +26,9 @@ The [second audit](product-audit-follow-up.md) found four consequential gaps in 
 
 The related interaction changes put the current concern, replacement, and returned evidence in one neutral assessment; keep all deliberately shared requests actionable across feedback batches; and combine explicit waiting or reviewer handoffs with the action that causes them. A returned file can be deliberately included in a new package, with its role and a fresh intake check. Smaller headings, optional finding classification, and focus movement leave more attention for the working material.
 
-The [delivery rundown](delivery-rundown.md) and linked decision records explain each choice. This increment does not implement the audit's V2 proposals: notifications, specialist action lists, context-sensitive intake guidance, reference-change impact review, or email ingestion. In particular, reference withdrawal blocks new approvals but does not create reassessment tasks for historical approvals or warn before an earlier recorded result is shared. That remains an explicit limit.
+The [delivery rundown](delivery-rundown.md) and linked decision records explain each choice. This increment does not implement the audit's V2 proposals: notifications, specialist action lists, context-sensitive intake guidance, reference-change impact review, or email ingestion. Reference withdrawal blocks new approvals. The subsequent [approval-sharing check](approval-sharing-decision.md) also requires deliberate reconsideration before sharing an earlier approval based on a withdrawn reference; it does not create reassessment tasks for all historical approvals.
+
+The [focused follow-up findings](focused-follow-up-findings.md) record two further reproduced gaps—unassessed evidence at approval and changed required/advisory instructions—plus smaller intake opportunities. They are recommendations, not claims of implemented behavior.
 
 ## Verification to read with the demo
 
