@@ -73,6 +73,10 @@ export function applyHandoff(c: ReviewCase, action: CaseAction, actor: string, o
       c.publishedFeedback.push({ id: randomUUID(), revisionId: revision.id, createdAt: now(), publishedBy: actor, subject: action.subject, body: action.body, findings });
       c.submitterToken ||= randomBytes(24).toString('base64url');
       event('feedback_shared', `${findings.length} request${findings.length === 1 ? '' : 's'} shared on the submission page. No email was sent.`);
+      if (action.waiting) {
+        c.status = 'waiting'; c.nextOwner = action.waiting.nextOwner; c.waitingReason = action.waiting.reason;
+        event('waiting', `Waiting on ${action.waiting.nextOwner}: ${action.waiting.reason}`);
+      }
       return true;
     }
     case 'publish_result': {
@@ -97,6 +101,17 @@ export function applyHandoff(c: ReviewCase, action: CaseAction, actor: string, o
       c.communications ??= [];
       c.communications.push({ id: randomUUID(), createdAt: now(), occurredAt: action.occurredAt, actor, recipient: action.recipient, messageId: action.messageId, messageVersion: action.messageVersion, channel: action.channel, note: action.note });
       event('communication_recorded', `${actor} recorded external communication with ${action.recipient} by ${action.channel}. Delivery was not verified.`);
+      return true;
+    }
+    case 'assess_response': {
+      if (participant(action.actorId).role !== 'reviewer') throw new WorkflowError(400, 'Select a reviewer to assess a response.');
+      const response = c.responses?.find(item => item.id === action.responseId);
+      if (!response) throw new WorkflowError(404, 'This response was not found.');
+      if (response.assessment) throw new WorkflowError(409, 'This response has already been assessed.');
+      if (action.sharedMessage?.trim() && response.audience !== 'submitter') throw new WorkflowError(400, 'An internal response cannot receive a submitter acknowledgment.');
+      response.assessment = { at: now(), by: actor, note: action.note };
+      if (action.sharedMessage?.trim()) response.sharedAcknowledgment = { at: now(), by: actor, message: action.sharedMessage.trim() };
+      event('response_assessed', `Response from ${response.author} assessed. Findings require their own disposition.${response.sharedAcknowledgment ? ' An acknowledgment was shared with the submitter.' : ''}`);
       return true;
     }
     case 'add_response':

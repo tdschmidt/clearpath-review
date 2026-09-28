@@ -92,7 +92,7 @@ export interface Finding {
   createdAt: string;
   createdBy: string;
   revisionId: string;
-  disposition?: { reason: string; at: string; by: string; revisionId: string };
+  disposition?: { reason: string; at: string; by: string; revisionId: string; responseIds?: string[] };
   needsRecheck?: boolean;
   audience?: "internal" | "submitter";
   citations?: MaterialCitation[];
@@ -146,6 +146,19 @@ export interface PublishedFeedback {
 export interface SubmissionResponse {
   id: string; createdAt: string; author: string; text: string; findingIds: string[]; assetIds: string[]; revisionId: string;
   audience: "internal" | "submitter";
+  assessment?: { at: string; by: string; note: string };
+  sharedAcknowledgment?: { at: string; by: string; message: string };
+}
+export interface PublishedRequestUpdate {
+  findingId: string; feedbackId: string; revisionId: string; createdAt: string; by: string;
+  status: "accepted" | "no_longer_required" | "open";
+  receivedResponseIds?: string[];
+}
+export interface SharedRequest {
+  findingId: string; number: number; title: string; request: string; location: string; material: boolean;
+  citations?: MaterialCitation[]; feedbackId: string; revisionId: string; sharedAt: string;
+  statusRevisionId?: string; status: "open" | "response_received" | "accepted" | "no_longer_required";
+  pendingResponseCount: number;
 }
 export interface CommunicationRecord {
   id: string; createdAt: string; occurredAt: string; actor: string; recipient: string;
@@ -186,6 +199,7 @@ export interface ReviewCase {
   submitterAssetIds?: string[];
   submitterRevisionIds?: string[];
   publishedFeedback?: PublishedFeedback[];
+  publishedRequestUpdates?: PublishedRequestUpdate[];
   publishedResults?: PublishedResult[];
   responses?: SubmissionResponse[];
   communications?: CommunicationRecord[];
@@ -236,10 +250,11 @@ export type CaseAction = { expectedVersion: number; actorId?: string } & (
   | { type: "assign_owner"; ownerId: string }
   | { type: "correct_contact"; title: string; submitter: string; submitterEmail: string; reason: string }
   | { type: "create_submitter_link" | "rotate_submitter_link" }
-  | { type: "publish_feedback"; findingIds: string[]; subject: string; body: string }
+  | { type: "publish_feedback"; findingIds: string[]; subject: string; body: string; waiting?: { nextOwner: string; reason: string } }
   | { type: "publish_result"; decisionId: string; message: string }
   | { type: "record_communication"; messageId: string; messageVersion: number; recipient: string; occurredAt: string; channel: string; note: string }
   | { type: "add_response"; text: string; findingIds: string[] }
+  | { type: "assess_response"; responseId: string; note: string; sharedMessage?: string }
   | { type: "withdraw_approval"; decisionId: string; reason: string }
   | { type: "cancel"; reason: string }
   | {
@@ -247,6 +262,8 @@ export type CaseAction = { expectedVersion: number; actorId?: string } & (
       findingId: string;
       status: FindingStatus;
       reason: string;
+      responseIds?: string[];
+      shareWithSubmitter?: boolean;
     }
   | { type: "set_waiting"; nextOwner: string; reason: string }
   | { type: "resume" }
@@ -267,6 +284,8 @@ export const openBlockers = (c: ReviewCase) =>
   c.findings.filter(
     (f) => f.material && (f.status === "open" || f.needsRecheck),
   );
+export const pendingResponses = (c: ReviewCase) =>
+  (c.responses || []).filter(response => !response.assessment);
 export const assetUrl = (caseId: string, assetId: string, download = false) =>
   `/api/cases/${encodeURIComponent(caseId)}/assets/${encodeURIComponent(assetId)}${download ? "?download=1" : ""}`;
 
@@ -281,7 +300,8 @@ export interface SubmitterCase {
   reference: string; title: string; product: Product; submitter: string; submitterEmail: string;
   version: number; status: "received" | "feedback_shared" | "approved" | "rejected" | "withdrawn" | "cancelled";
   createdAt: string; updatedAt: string; revisions: ExternalRevision[]; assets: Asset[];
-  feedback: PublishedFeedback[]; results: PublishedResult[]; responses: SubmissionResponse[];
+  feedback: PublishedFeedback[]; results: PublishedResult[]; responses: Omit<SubmissionResponse, "assessment">[];
+  sharedRequests: SharedRequest[];
   cancellationReason?: string;
 }
 export interface SubmitterReceipt { token: string; submission: SubmitterCase }

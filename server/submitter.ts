@@ -1,4 +1,4 @@
-import type { ReviewCase, SubmitterCase } from '../shared/types.ts';
+import type { ReviewCase, SubmitterCase, SharedRequest } from '../shared/types.ts';
 import { currentRevision } from '../shared/types.ts';
 
 /** This is a separate response model, never a redacted spread of an internal case. */
@@ -9,6 +9,21 @@ export function submitterView(c: ReviewCase): SubmitterCase {
   const sharedRevisions = new Set([...submitted, ...(c.publishedFeedback || []).map(item => item.revisionId), ...(c.publishedResults || []).map(item => item.revisionId)]);
   const feedback = c.publishedFeedback || [];
   const results = c.publishedResults || [];
+  const requests = new Map<string, SharedRequest>();
+  const latestSubmissionNumber = Math.max(0, ...c.revisions.filter(revision => submitted.has(revision.id)).map(revision => revision.number));
+  for (const batch of feedback) {
+    for (const finding of batch.findings) {
+      const update = [...(c.publishedRequestUpdates || [])].reverse().find(item => item.findingId === finding.id && item.feedbackId === batch.id);
+      const updateNumber = update ? c.revisions.find(revision => revision.id === update.revisionId)?.number || 0 : 0;
+      const pending = (c.responses || []).filter(response => response.audience === 'submitter' && !response.assessment && response.findingIds.includes(finding.id) && (!update || (update.receivedResponseIds ? !update.receivedResponseIds.includes(response.id) : response.createdAt > update.createdAt)));
+      requests.set(finding.id, {
+        findingId: finding.id, number: finding.number, title: finding.title, request: finding.request, location: finding.location, material: finding.material,
+        citations: finding.citations?.filter(citation => allowed.has(citation.assetId)), feedbackId: batch.id, revisionId: batch.revisionId, sharedAt: batch.createdAt,
+        ...(update ? { statusRevisionId: update.revisionId } : {}),
+        status: pending.length ? 'response_received' : update && latestSubmissionNumber <= updateNumber ? update.status : 'open', pendingResponseCount: pending.length,
+      });
+    }
+  }
   const currentResult = [...results].reverse().find(result => result.revisionId === current.id);
   const status = c.cancelled ? 'cancelled' : currentResult?.withdrawn ? 'withdrawn'
     : currentResult ? currentResult.outcome : feedback.some(item => item.revisionId === current.id) ? 'feedback_shared' : 'received';
@@ -27,7 +42,12 @@ export function submitterView(c: ReviewCase): SubmitterCase {
       citations: finding.citations?.filter(citation => allowed.has(citation.assetId)),
     })) })),
     results: results.map(item => ({ ...item, assetIds: item.assetIds.filter(assetId => allowed.has(assetId)) })),
-    responses: (c.responses || []).filter(response => response.audience === 'submitter').map(response => ({ ...response, assetIds: response.assetIds.filter(assetId => allowed.has(assetId)) })),
+    sharedRequests: [...requests.values()],
+    responses: (c.responses || []).filter(response => response.audience === 'submitter').map(response => ({
+      id: response.id, createdAt: response.createdAt, author: response.author, text: response.text, findingIds: response.findingIds,
+      assetIds: response.assetIds.filter(assetId => allowed.has(assetId)), revisionId: response.revisionId, audience: response.audience,
+      ...(response.sharedAcknowledgment ? { sharedAcknowledgment: response.sharedAcknowledgment } : {}),
+    })),
     ...(c.cancelled ? { cancellationReason: 'This submission has been cancelled. Contact the review team if you need to submit a new package.' } : {}),
   };
 }

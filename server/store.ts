@@ -237,7 +237,7 @@ export class WorkflowStore {
       this.version(c, action.expectedVersion);
       const revision = currentRevision(c);
       const actor = participant(action.actorId);
-      if (['approved', 'rejected', 'cancelled'].includes(c.status) && !['add_note', 'save_draft', 'assign_owner', 'correct_contact', 'create_submitter_link', 'rotate_submitter_link', 'publish_result', 'record_communication', 'withdraw_approval', 'cancel', 'add_response'].includes(action.type)) throw new WorkflowError(409, 'This revision has a final decision. Submit a new revision to resume review.', 'decision_closed');
+      if (['approved', 'rejected', 'cancelled'].includes(c.status) && !['add_note', 'save_draft', 'assign_owner', 'correct_contact', 'create_submitter_link', 'rotate_submitter_link', 'publish_result', 'record_communication', 'withdraw_approval', 'cancel', 'add_response', 'assess_response'].includes(action.type)) throw new WorkflowError(409, 'This revision has a final decision. Submit a new revision to resume review.', 'decision_closed');
       const event = (type: string, text: string) => this.event(c, type, text, actor.name);
       if (applyHandoff(c, action, actor.name, this.offers, event)) return this.save(c, action.expectedVersion);
       switch (action.type) {
@@ -270,9 +270,27 @@ export class WorkflowStore {
           if (c.confirmedRevisionId !== revision.id) throw new WorkflowError(400, 'Confirm the current intake before changing findings.');
           const finding = c.findings.find(f => f.id === action.findingId);
           if (!finding) throw new WorkflowError(404, 'This finding was not found.', 'not_found');
+          const responseIds = [...new Set(action.responseIds || [])];
+          if (responseIds.some(responseId => !c.responses?.some(response => response.id === responseId && (!response.findingIds.length || response.findingIds.includes(finding.id))))) throw new WorkflowError(400, 'Choose responses linked to this finding or general case responses.');
+          const sharedRequest = [...(c.publishedFeedback || [])].reverse().find(feedback => feedback.findings.some(shared => shared.id === finding.id));
+          if (action.shareWithSubmitter && !sharedRequest) throw new WorkflowError(400, 'Only a previously shared request can receive a shared status update.');
           finding.status = action.status; finding.needsRecheck = false;
-          finding.disposition = { reason: action.reason, at: now(), by: actor.name, revisionId: revision.id };
-          event(`finding_${action.status}`, `Finding ${finding.number} ${action.status}: ${action.reason}`);
+          finding.disposition = { reason: action.reason, at: now(), by: actor.name, revisionId: revision.id, ...(responseIds.length ? { responseIds } : {}) };
+          if (action.shareWithSubmitter && sharedRequest) {
+            c.publishedRequestUpdates ??= [];
+            c.publishedRequestUpdates.push({ findingId: finding.id, feedbackId: sharedRequest.id, revisionId: revision.id, createdAt: now(), by: actor.name, status: action.status === 'resolved' ? 'accepted' : action.status === 'dismissed' ? 'no_longer_required' : 'open', receivedResponseIds: (c.responses || []).map(response => response.id) });
+          }
+          event(`finding_${action.status}`, `Finding ${finding.number} ${action.status}: ${action.reason}${responseIds.length ? ` Considered responses: ${responseIds.join(', ')}.` : ''}${action.shareWithSubmitter ? ' Request status shared with the submitter; internal reason remains internal.' : ''}`);
+          if (actor.role === 'reviewer') {
+            for (const response of c.responses || []) {
+              if (!responseIds.includes(response.id) || response.assessment) continue;
+              const allLinkedRequestsConsidered = response.findingIds.every(findingId => c.findings.some(item => item.id === findingId && !item.needsRecheck && item.disposition?.revisionId === revision.id && item.disposition.responseIds?.includes(response.id)));
+              if (allLinkedRequestsConsidered) {
+                response.assessment = { at: now(), by: actor.name, note: `Explicitly considered in recorded finding dispositions for revision ${revision.number}.` };
+                event('response_assessed', `Response from ${response.author} assessed through the linked finding dispositions. No acknowledgment was automatically shared.`);
+              }
+            }
+          }
           break;
         }
         case 'set_waiting':
