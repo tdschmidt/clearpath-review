@@ -61,7 +61,7 @@ async function setup(t: TestContext, seedDemo = false) {
     const { id: _id, number: _number, createdAt: _createdAt, components: _components, contextInherited: _inherited, ...input } = revision(c, changes);
     return multipart(`/api/cases/${c.id}/revisions`, input, files, key);
   };
-  return { app, dataDir, url, json, multipart, action, revise };
+  return { app, dataDir, url, json, multipart, action, revise, initialAssetCount: readdirSync(join(dataDir, 'assets')).length };
 }
 
 test('a partial revision keeps its unresolved findings; approval belongs only to the reviewed revision', async t => {
@@ -170,7 +170,7 @@ test('concurrent edits conflict instead of losing work; a successful retry does 
   assert.equal(a.status, 201);
   assert.deepEqual(a.body, b.body);
   assert.equal((await h.json('/api/cases')).body.length, 1);
-  assert.equal(readdirSync(join(h.dataDir, 'assets')).length, 1);
+  assert.equal(readdirSync(join(h.dataDir, 'assets')).length - h.initialAssetCount, 1);
   assert.equal((await h.multipart('/api/cases', { ...input, title: 'Different request' }, files, 'submission-1')).body.code, 'idempotency_conflict');
   const c: ReviewCase = a.body;
   const edits = await Promise.all([h.action(c, { type: 'add_note', text: 'First reviewer observation' }), h.action(c, { type: 'add_note', text: 'Second reviewer observation' })]);
@@ -206,7 +206,7 @@ test('assets preserve original bytes and filenames, isolate cases, and force uns
   assert.equal((await h.revise(other, { retainedComponents: [{ assetId: c.assets[0].id, role: 'creative' }] })).status, 400);
   assert.equal((await h.multipart('/api/cases', { ...base, fileRoles: ['creative'] }, [{ name: 'fake.png', bytes: Buffer.from('<html>not an image</html>') }])).body.code, 'invalid_file_type');
   assert.equal((await h.json('/api/cases')).body.length, 2);
-  assert.equal(readdirSync(join(h.dataDir, 'assets')).length, 2);
+  assert.equal(readdirSync(join(h.dataDir, 'assets')).length - h.initialAssetCount, 2);
 });
 
 test('server rejects malformed fields, impossible dates, unsafe destinations, and oversized packages without partial writes', async t => {
@@ -219,7 +219,7 @@ test('server rejects malformed fields, impossible dates, unsafe destinations, an
   assert.equal((await h.multipart('/api/cases', { ...base, fileRoles: ['creative', 'evidence', 'evidence'] }, [1, 2, 3].map(i => ({ name: `${i}.pdf`, bytes: large })))).status, 413);
   assert.equal((await h.multipart('/api/cases', { ...base, fileRoles: ['creative'] }, [{ name: 'huge.pdf', bytes: Buffer.alloc(10 * 1024 * 1024 + 1) }])).status, 413);
   assert.equal((await h.json('/api/cases')).body.length, 0);
-  assert.equal(readdirSync(join(h.dataDir, 'assets')).length, 0);
+  assert.equal(readdirSync(join(h.dataDir, 'assets')).length - h.initialAssetCount, 0);
   const c: ReviewCase = (await h.multipart('/api/cases', base)).body;
   assert.equal((await h.multipart(`/api/cases/${c.id}/revisions`, null)).status, 400);
   assert.equal((await h.action(c, { type: 'confirm_intake', unexpected: true })).status, 400);
@@ -308,7 +308,7 @@ test('the review ZIP preserves every original and immutable decision basis while
   assert.equal(response.headers.get('content-type'), 'application/zip');
   assert.match(response.headers.get('content-disposition')!, new RegExp(`${c.reference}-review-record\\.zip`));
   const files = unzipSync(new Uint8Array(await response.arrayBuffer()));
-  assert.equal(Object.keys(files).length, c.assets.length + 2);
+  assert.equal(Object.keys(files).length, c.assets.length + 3);
   const report = strFromU8(files['review-record.md']);
   const record = JSON.parse(strFromU8(files['review-record.json']));
   assert.equal(record.label, 'Internal review record');
@@ -326,13 +326,13 @@ test('the review ZIP preserves every original and immutable decision basis while
     assert.ok(!report.includes(secret));
     assert.ok(!JSON.stringify(record).includes(secret));
   }
-  assert.equal(new Set(record.assetManifest.map((asset: { archivePath: string }) => asset.archivePath)).size, c.assets.length);
+  assert.equal(new Set(record.assetManifest.map((asset: { archivePath: string }) => asset.archivePath)).size, c.assets.length + 1);
   for (const asset of record.assetManifest) {
     assert.match(asset.archivePath, /^originals\/[a-zA-Z0-9._-]+$/);
     assert.ok(!asset.archivePath.split('/').includes('..'));
     assert.deepEqual(Buffer.from(files[asset.archivePath]), readFileSync(join(h.dataDir, 'assets', asset.id)));
     assert.equal(createHash('sha256').update(files[asset.archivePath]).digest('hex'), asset.sha256);
-    assert.ok(asset.versions.length > 0);
+    assert.ok(asset.versions.length > 0 || asset.offerIds.length > 0);
   }
   assert.equal(record.assetManifest.filter((asset: { name: string }) => asset.name === 'social-ad.png').length, 2);
   assert.deepEqual((await h.json(`/api/cases/${c.id}`)).body, c, 'export must not write a case event or version');
@@ -543,4 +543,30 @@ test('shared decisions contain exact deliverables, withdrawals supersede them wi
   c = (await h.action(c, { type: 'cancel', reason: 'Campaign cancelled by submitter.' })).body;
   assert.equal(c.status, 'cancelled');
   assert.equal((await h.revise(c)).status, 409);
+});
+
+test('reference retries preserve one version and archives include source originals without return-link tokens', async t => {
+  const h = await setup(t);
+  const input = { product: 'personal_loan', name: 'Reference retry', version: '1', validFrom: '2026-09-01', validTo: '2026-12-01', source: 'Product team supplied this document.', disclosure: '', facts: [{ label: 'Fee', value: '5%', sourceFileIndex: 0, page: 1 }] };
+  const files = [{ name: 'terms.pdf', bytes: destination }];
+  const first = await h.multipart('/api/offers', input, files, 'reference-1');
+  assert.equal(first.status, 201);
+  assert.deepEqual((await h.multipart('/api/offers', input, files, 'reference-1')).body, first.body);
+  assert.equal((await h.multipart('/api/offers', { ...input, source: 'Different content' }, files, 'reference-1')).body.code, 'idempotency_conflict');
+  assert.equal((await h.multipart('/api/offers', input, files)).status, 409);
+  let c: ReviewCase = (await h.multipart('/api/cases', { ...base, offerId: first.body.id })).body;
+  c = (await h.action(c, { type: 'create_submitter_link' })).body;
+  c = (await h.action(c, { type: 'save_draft', subject: 'Recorded message', body: 'This is the exact externally communicated message.' })).body;
+  c = (await h.action(c, { type: 'record_communication', messageId: c.drafts[0].id, messageVersion: 1, recipient: base.submitterEmail, occurredAt: new Date().toISOString(), channel: 'Email', note: '' })).body;
+  const archive = buildReviewExport(c, h.app.locals.store.offers, h.app.locals.store.assetsDir);
+  const entries = unzipSync(archive.bytes);
+  const recordText = strFromU8(entries['review-record.json']);
+  assert.equal(recordText.includes(c.submitterToken!), false);
+  const record = JSON.parse(recordText);
+  assert.equal(record.communicatedMessages[0].body, 'This is the exact externally communicated message.');
+  const source = record.assetManifest.find((asset: { id: string }) => asset.id === first.body.assets[0].id);
+  assert.ok(source);
+  assert.deepEqual(Buffer.from(entries[source.archivePath]), destination);
+  assert.equal(record.case.drafts, undefined);
+  assert.deepEqual(record.assetManifest[0].offerIds, [first.body.id]);
 });

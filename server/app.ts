@@ -44,7 +44,7 @@ export function createApp(options: { dataDir?: string; seedDemo?: boolean; offer
   };
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
   app.get('/api/participants', (_req, res) => res.json(PARTICIPANTS));
-  app.post('/api/offers', upload, (req, res) => res.status(201).json(createReference(store.db, store.assetsDir, offerSchema.parse(payload(req)), (req.files || []) as Express.Multer.File[])));
+  app.post('/api/offers', upload, (req, res) => res.status(201).json(createReference(store.db, store.assetsDir, offerSchema.parse(payload(req)), (req.files || []) as Express.Multer.File[], key(req))));
   app.post('/api/offers/:id/withdraw', (req, res) => { const input = withdrawalSchema.parse(req.body); res.json(withdrawReference(store.db, req.params.id, input.reason, input.actorId)); });
   app.get('/api/offers/:id/assets/:assetId', (req, res, next) => {
     const asset = store.offers.find(offer => offer.id === req.params.id)?.assets?.find(item => item.id === req.params.assetId);

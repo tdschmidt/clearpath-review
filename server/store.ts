@@ -6,7 +6,7 @@ import { REVIEWER, currentRevision, openBlockers } from '../shared/types.ts';
 import type { Asset, CaseAction, Offer, PackageRevision, ReviewCase, RevisionInput, SubmissionInput } from '../shared/types.ts';
 
 import { applyHandoff, validateFinding } from './handoffs.ts';
-import { participant, listReferences } from './references.ts';
+import { participant, listReferences, importFixtureReferenceSources } from './references.ts';
 
 export class WorkflowError extends Error {
   constructor(public status: number, message: string, public code = 'invalid_request', public currentVersion?: number) { super(message); }
@@ -56,6 +56,7 @@ export class WorkflowStore {
       CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, data TEXT NOT NULL);`);
     this.transaction(() => {
       initialOffers.forEach(offer => this.db.prepare('INSERT OR IGNORE INTO offers(id,created_at,data) VALUES (?,?,?)').run(offer.id, offer.createdAt || '', JSON.stringify(offer)));
+      importFixtureReferenceSources(this.db, this.assetsDir);
       if (schemaVersion < 2) {
         for (const row of this.db.prepare('SELECT id,data FROM cases').all()) {
           const c = JSON.parse(row.data as string) as ReviewCase;
@@ -241,7 +242,7 @@ export class WorkflowStore {
       if (applyHandoff(c, action, actor.name, this.offers, event)) return this.save(c, action.expectedVersion);
       switch (action.type) {
         case 'confirm_intake':
-          if (action.offerId !== undefined && action.offerId !== revision.offerId && c.decisions.some(decision => decision.revisionId === revision.id)) throw new WorkflowError(409, 'Submit a new revision before changing the reference for a previously decided package.');
+          if (((action.offerId !== undefined && action.offerId !== revision.offerId) || (action.applicabilityReason !== undefined && action.applicabilityReason !== revision.applicabilityReason)) && c.decisions.some(decision => decision.revisionId === revision.id)) throw new WorkflowError(409, 'Submit a new revision before changing the reference for a previously decided package.');
           if (action.offerId !== undefined) revision.offerId = action.offerId;
           if (action.applicabilityReason !== undefined) revision.applicabilityReason = action.applicabilityReason;
           this.validateOffer(revision.offerId, c.product, true);

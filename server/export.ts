@@ -14,9 +14,13 @@ const quote = (value: string) => (value || '(Not recorded)').split('\n').map(lin
 
 export function buildReviewExport(c: ReviewCase, offers: Offer[], assetsDir: string) {
   const tooLarge = () => new WorkflowError(413, 'This record contains more than 100 MB of original files. Download individual files from the case instead.', 'export_too_large');
-  if (c.assets.reduce((total, asset) => total + asset.size, 0) > MAX_ORIGINAL_BYTES) throw tooLarge();
+  const referencedOfferIds = [...new Set([...c.revisions.map(revision => revision.offerId), ...c.decisions.map(decision => decision.offerId), ...c.findings.flatMap(finding => (finding.sourceCitations || []).map(citation => citation.offerId))].filter(Boolean))];
+  const catalogReferences = referencedOfferIds.map(offerId => ({ offerId, offer: offers.find(offer => offer.id === offerId) || null }));
+  const sources = [...catalogReferences.flatMap(reference => reference.offer?.assets || []), ...c.decisions.flatMap(decision => decision.offerSnapshot?.assets || [])];
+  const allAssets = [...new Map([...c.assets, ...sources].map(asset => [asset.id, asset])).values()];
+  if (allAssets.reduce((total, asset) => total + asset.size, 0) > MAX_ORIGINAL_BYTES) throw tooLarge();
   let totalBytes = 0;
-  const manifest = c.assets.map((asset, index) => {
+  const manifest = allAssets.map((asset, index) => {
     const path = join(assetsDir, asset.id);
     let file;
     try { file = lstatSync(path); } catch { throw new WorkflowError(404, `Cannot export: original file ${asset.name} is unavailable. The review record is unchanged.`, 'asset_unavailable'); }
@@ -26,15 +30,14 @@ export function buildReviewExport(c: ReviewCase, offers: Offer[], assetsDir: str
     if (file.size !== asset.size) throw new WorkflowError(409, `Cannot export: the preserved size of ${asset.name} does not match its recorded metadata.`, 'asset_integrity_error');
     return {
       ...asset, archivePath: `originals/${String(index + 1).padStart(4, '0')}-${safeFilename(asset.id)}-${safeFilename(asset.name)}`,
+      offerIds: referencedOfferIds.filter(offerId => offers.find(offer => offer.id === offerId)?.assets?.some(source => source.id === asset.id)),
       versions: c.revisions.flatMap(revision => revision.components.filter(component => component.assetId === asset.id).map(component => ({ revisionId: revision.id, revisionNumber: revision.number, role: component.role }))),
     };
   });
-  const { notes: _notes, drafts: _drafts, history, ...caseRecord } = c;
+  const { notes: _notes, drafts: _drafts, submitterToken: _token, submitterAssetIds: _sharedAssets, submitterRevisionIds: _sharedRevisions, history, ...caseRecord } = c;
   const filteredHistory = history.filter(event => !['note', 'draft_prepared'].includes(event.type));
-  const referencedOfferIds = [...new Set([...c.revisions.map(revision => revision.offerId), ...c.decisions.map(decision => decision.offerId)].filter(Boolean))];
-  const catalogReferences = referencedOfferIds.map(offerId => ({ offerId, offer: offers.find(offer => offer.id === offerId) || null }));
   const exportedAt = new Date().toISOString();
-  const exclusions = ['Internal note records', 'Prepared reply draft records', 'Activity events recording note or draft creation'];
+  const exclusions = ['Internal note records', 'Prepared reply draft records', 'Activity events recording note or draft creation', 'Submission return-link tokens'];
   const record = {
     format: 'clearpath-review-record-v1', label: 'Internal review record', exportedAt, exclusions,
     interpretation: {
@@ -45,6 +48,11 @@ export function buildReviewExport(c: ReviewCase, offers: Offer[], assetsDir: str
       originals: 'Every preserved original is included, including earlier and excluded components. Version membership and roles are recorded in assetManifest.',
     },
     case: { ...caseRecord, history: filteredHistory }, catalogReferences, assetManifest: manifest,
+    communicatedMessages: (c.communications || []).map(communication => {
+      const draft = c.drafts.find(item => item.id === communication.messageId);
+      const message = draft && (draft.version || 1) === communication.messageVersion ? draft : draft?.previousVersions?.find(item => item.version === communication.messageVersion);
+      return { communicationId: communication.id, messageId: communication.messageId, messageVersion: communication.messageVersion, ...(message ? { subject: message.subject, body: message.body } : { publishedMessage: true }) };
+    }),
   };
   const revisionLabel = (id: string) => `v${c.revisions.find(revision => revision.id === id)?.number ?? '?'} (${id})`;
   const findingText = (finding: Finding) => [
@@ -77,6 +85,7 @@ export function buildReviewExport(c: ReviewCase, offers: Offer[], assetsDir: str
     ...(c.decisions.length ? c.decisions.flatMap(decision => [
       `### ${decision.outcome.toUpperCase()} — ${md(revisionLabel(decision.revisionId))}`,
       `Reviewer: ${md(decision.reviewer)}. Recorded: ${decision.createdAt}. Decision ID: ${decision.id}.`,
+      ...(decision.withdrawn ? [`**Withdrawn:** ${md(decision.withdrawn.by)} at ${decision.withdrawn.at}`, quote(decision.withdrawn.reason)] : []),
       '**Scope**', quote(decision.scope), '**Rationale**', quote(decision.rationale),
       decision.offerSnapshot ? '**Offer snapshot captured at decision time**\n\n' + offerText(decision.offerSnapshot) : `Offer reference: ${md(decision.offerId || 'Not recorded')}. No offer snapshot was recorded for this decision; current catalog values must not be treated as historical proof.`,
       decision.findingSnapshot ? '**Finding snapshot captured at decision time**\n\n' + (decision.findingSnapshot.length ? decision.findingSnapshot.map(findingText).join('\n\n') : 'No findings existed when this decision was recorded.') : 'No finding snapshot was recorded for this decision. Current findings below may have changed; consult retained history and original material.',
@@ -103,8 +112,14 @@ export function buildReviewExport(c: ReviewCase, offers: Offer[], assetsDir: str
       `### ${md(asset.name)}`, `[Preserved original](${asset.archivePath})`,
       `- ID: ${asset.id}; MIME: ${asset.mime}; bytes: ${asset.size}; received: ${asset.createdAt}`,
       `- SHA-256: \`${asset.sha256}\``,
-      `- Membership: ${asset.versions.map(version => `v${version.revisionNumber} (${version.role})`).join(', ') || 'Not included in a package version'}`,
+      `- Membership: ${asset.versions.map(version => `v${version.revisionNumber} (${version.role})`).join(', ') || (asset.offerIds.length ? 'Offer source: ' + asset.offerIds.join(', ') : 'Response attachment / not included in a package version')}`,
     ]),
+    '## Shared feedback, results, and responses',
+    ...(c.publishedFeedback || []).flatMap(feedback => [`### ${md(feedback.subject)}`, `Shared ${feedback.createdAt} by ${md(feedback.publishedBy)} for ${md(revisionLabel(feedback.revisionId))}.`, quote(feedback.body)]),
+    ...(c.publishedResults || []).flatMap(result => [`### Shared ${result.outcome} result`, `Shared ${result.createdAt}; decision ${result.decisionId}; ${result.withdrawn ? 'withdrawn' : 'not withdrawn'}.`, quote(result.scope), quote(result.message)]),
+    ...(c.responses || []).flatMap(response => [`### ${md(response.author)} — ${response.createdAt}`, `Audience: ${response.audience}. Request IDs: ${response.findingIds.join(', ') || 'None'}.`, quote(response.text)]),
+    '## Manually recorded communication',
+    ...(c.communications?.length ? c.communications.map(communication => `- ${communication.occurredAt}: ${md(communication.actor)} recorded communication with ${md(communication.recipient)} by ${md(communication.channel)}; message ${communication.messageId} version ${communication.messageVersion}. Delivery was not verified.`) : ['No external communication has been recorded.']),
     '## Retained review history',
     ...filteredHistory.map(event => `- ${event.createdAt} — ${md(event.actor)} — ${md(revisionLabel(event.revisionId))} — ${md(event.text)}`),
     '\nThe accompanying review-record.json contains the same structured record and explicit exclusions. Original bytes were checked against their recorded size and SHA-256 before this archive was generated.\n',

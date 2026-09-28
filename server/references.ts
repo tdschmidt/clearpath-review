@@ -1,5 +1,5 @@
-import { randomUUID } from 'node:crypto';
-import { writeFileSync, rmSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import { existsSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Offer, OfferInput, Participant } from '../shared/types.ts';
@@ -14,7 +14,7 @@ export function participant(actorId = 'maya'): Participant {
 export function listReferences(db: DatabaseSync): Offer[] {
   return db.prepare('SELECT data FROM offers ORDER BY created_at DESC, id ASC').all().map(row => JSON.parse(row.data as string));
 }
-export function createReference(db: DatabaseSync, assetsDir: string, input: OfferInput, files: Upload[]): Offer {
+export function createReference(db: DatabaseSync, assetsDir: string, input: OfferInput, files: Upload[], key?: string): Offer {
   const actor = participant(input.actorId);
   if (input.validTo < input.validFrom) throw new WorkflowError(400, 'The end date must be on or after the start date.');
   if (!files.length) throw new WorkflowError(400, 'Preserve at least one source document for this reference.');
@@ -35,8 +35,18 @@ export function createReference(db: DatabaseSync, assetsDir: string, input: Offe
   const written: string[] = [];
   try {
     db.exec('BEGIN IMMEDIATE');
+    const digest = createHash('sha256').update(JSON.stringify({ input, files: assets.map(({ name, sha256 }) => ({ name, sha256 })) })).digest('hex');
+    if (key) {
+      const prior = db.prepare("SELECT digest,response FROM requests WHERE scope='reference' AND key=?").get(key);
+      if (prior) {
+        if (prior.digest !== digest) throw new WorkflowError(409, 'This retry key was already used for different reference content.', 'idempotency_conflict');
+        db.exec('COMMIT'); return JSON.parse(prior.response as string);
+      }
+    }
+    if (listReferences(db).some(item => item.product === input.product && item.name === input.name && item.version === input.version)) throw new WorkflowError(409, 'This reference version already exists. Use a new version for changed facts.');
     assets.forEach((asset, i) => { const path = join(assetsDir, asset.id); writeFileSync(path, files[i].buffer, { flag: 'wx' }); written.push(path); });
     db.prepare('INSERT INTO offers(id,created_at,data) VALUES (?,?,?)').run(offer.id, offer.createdAt!, JSON.stringify(offer));
+    if (key) db.prepare("INSERT INTO requests(scope,key,digest,response) VALUES ('reference',?,?,?)").run(key, digest, JSON.stringify(offer));
     db.exec('COMMIT');
     return offer;
   } catch (error) { db.exec('ROLLBACK'); written.forEach(path => rmSync(path, { force: true })); throw error; }
@@ -49,4 +59,27 @@ export function withdrawReference(db: DatabaseSync, offerId: string, reason: str
   offer.withdrawnAt = new Date().toISOString(); offer.withdrawalReason = reason;
   db.prepare('UPDATE offers SET data=? WHERE id=?').run(JSON.stringify(offer), offer.id);
   return offer;
+}
+
+// These three source files and their single-page fact citations were inspected
+// when the authored examples were created. This is fixture import, not extraction.
+export function importFixtureReferenceSources(db: DatabaseSync, assetsDir: string) {
+  const sources: Record<string, string> = {
+    'offer-personal-loan-v3': 'public/fixtures/offers/personal-loan.pdf',
+    'offer-credit-card-v2': 'public/fixtures/offers/credit-card.pdf',
+    'offer-mortgage-v1': 'public/fixtures/offers/mortgage.pdf',
+  };
+  for (const offer of listReferences(db)) {
+    const source = sources[offer.id];
+    if (!source || offer.assets?.length) continue;
+    const bytes = readFileSync(source);
+    const asset = { id: `reference-${offer.id}`, createdAt: '2026-09-01T00:00:00.000Z', ...inspectUpload({ originalname: source.split('/').at(-1)!, mimetype: 'application/pdf', buffer: bytes }) };
+    const destination = join(assetsDir, asset.id);
+    if (existsSync(destination)) {
+      if (!readFileSync(destination).equals(bytes)) throw new WorkflowError(409, 'An authored reference original changed unexpectedly.');
+    } else writeFileSync(destination, bytes, { flag: 'wx' });
+    offer.assets = [asset];
+    offer.facts = offer.facts.map(fact => ({ ...fact, citation: { offerId: offer.id, assetId: asset.id, page: 1 } }));
+    db.prepare('UPDATE offers SET data=? WHERE id=?').run(JSON.stringify(offer), offer.id);
+  }
 }
