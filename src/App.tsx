@@ -27,7 +27,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { api, json } from "./api";
+import { api, ApiError, json } from "./api";
 import {
   AssetViewer,
   date,
@@ -61,6 +61,8 @@ import {
   type ReviewCase,
 } from "../shared/types";
 
+import { useUnsavedWarning } from "./drafts";
+
 type Dialog =
   | null
   | "new"
@@ -82,6 +84,7 @@ const findingNames = {
 };
 
 export default function App() {
+  useUnsavedWarning();
   const [cases, setCases] = useState<ReviewCase[]>([]),
     [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true),
@@ -159,6 +162,12 @@ export default function App() {
               ? "Reply saved as a draft. Nothing was sent."
               : "Review updated.",
       });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409 && error.details?.code === "version_conflict") {
+        update(await api<ReviewCase>(`/api/cases/${selected.id}`));
+        throw new ApiError("This case changed. The latest context is loaded and your input was kept. Review the changes before saving again.", 409);
+      }
+      throw error;
     } finally {
       setSaving(false);
     }
@@ -323,6 +332,7 @@ export default function App() {
             <SubmissionForm
               offers={offers}
               existing={selected}
+              onLatest={update}
               onSaved={saved}
               onClose={() => setDialog(null)}
             />

@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -13,13 +13,15 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
-import { api, multipart } from "./api";
+import { api, ApiError, multipart } from "./api";
+import { clearDrafts, useDraftState } from "./drafts";
 import { bytes, ErrorMessage, Modal } from "./components";
 import {
   currentRevision,
   openBlockers,
   PRODUCT_LABELS,
   REVIEWER,
+  PARTICIPANTS,
   ROLE_LABELS,
   type AssetRole,
   type CaseAction,
@@ -41,6 +43,7 @@ type ActionProps = {
   review: ReviewCase;
   onAction: (action: ActionInput) => Promise<void>;
   onClose: () => void;
+  reviewerName?: string;
 };
 export function Field({
   label,
@@ -71,16 +74,19 @@ function Submit({ busy, children }: { busy: boolean; children: ReactNode }) {
 export function SubmissionForm({
   offers,
   existing,
+  onLatest,
   onSaved,
   onClose,
 }: {
   offers: Offer[];
   existing?: ReviewCase;
+  onLatest?: (c: ReviewCase) => void;
   onSaved: (c: ReviewCase) => void;
   onClose: () => void;
 }) {
   const previous = existing && currentRevision(existing);
-  const [data, setData] = useState<SubmissionInput>({
+  const draftKey = `submission/${existing?.id || "new"}/`;
+  const [data, setData] = useDraftState<SubmissionInput>(draftKey + "fields", {
     title: existing?.title || "",
     product: existing?.product || "personal_loan",
     submitter: existing?.submitter || "",
@@ -95,8 +101,8 @@ export function SubmissionForm({
     destinationUrl: previous?.destinationUrl || "",
     fileRoles: [],
   });
-  const [files, setFiles] = useState<{ file: File; role: AssetRole }[]>([]);
-  const [retained, setRetained] = useState(previous?.components || []);
+  const [files, setFiles] = useDraftState<{ file: File; role: AssetRole; replaces?: string }[]>(draftKey + "files", [], true);
+  const [retained, setRetained] = useDraftState(draftKey + "retained", previous?.components || [], true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -182,6 +188,8 @@ export function SubmissionForm({
             intendedUse: data.intendedUse,
             copy: data.copy,
             destinationUrl: data.destinationUrl,
+            product: data.product, channel: data.channel, launchDate: data.launchDate,
+            replacements: files.map(f => f.replaces || null),
             fileRoles: files.map((f) => f.role),
             retainedComponents: retained,
             expectedVersion: existing.version,
@@ -205,9 +213,14 @@ export function SubmissionForm({
           key.current.value,
         ),
       );
+      clearDrafts(draftKey);
       onSaved(saved);
     } catch (e) {
-      setError((e as Error).message);
+      if (e instanceof ApiError && e.status === 409 && existing && onLatest) {
+        const latest = await api<ReviewCase>(`/api/cases/${existing.id}`);
+        onLatest(latest);
+        setError(`This case changed. Version ${currentRevision(latest).number} is now loaded. Your text and uploads were kept; reconcile the retained files and context before saving again.`);
+      } else setError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -262,8 +275,7 @@ export function SubmissionForm({
               </Field>
             )}
             <div className="form-grid">
-              {!existing && (
-                <Field label="Product">
+              <Field label="Product">
                   <select
                     value={data.product}
                     onChange={(e) => {
@@ -278,7 +290,6 @@ export function SubmissionForm({
                     ))}
                   </select>
                 </Field>
-              )}
               <Field
                 label="Offer reference"
                 hint="Missing facts can be requested during intake."
@@ -298,7 +309,6 @@ export function SubmissionForm({
                 </select>
               </Field>
             </div>
-            {!existing && (
               <div className="form-grid">
                 <Field label="Placement">
                   <select
@@ -325,7 +335,6 @@ export function SubmissionForm({
                   />
                 </Field>
               </div>
-            )}
             <Field
               label="Intended use"
               hint="Include placement, audience/geography, and any affiliate, targeting, or compensation context that matters. Note what is still unknown."
@@ -355,33 +364,27 @@ export function SubmissionForm({
                     (c) => c.assetId === comp.assetId,
                   );
                   return (
-                    <label className="retain-row" key={comp.assetId}>
-                      <input
-                        type="checkbox"
-                        checked={included}
-                        onChange={() =>
-                          setRetained((old) =>
-                            included
-                              ? old.filter((c) => c.assetId !== comp.assetId)
-                              : [...old, comp],
-                          )
-                        }
-                      />
-                      <span>
-                        {asset.name}
-                        <small>
-                          {ROLE_LABELS[comp.role]} ·{" "}
-                          {included
-                            ? "Carried forward"
-                            : "Removed from new version"}
-                        </small>
-                      </span>
-                    </label>
+                    <div className="retain-row" key={comp.assetId}>
+                      <span>{asset.name}<small>{included ? "Kept in this version" : files.some(f => f.replaces === comp.assetId) ? "Replacement selected" : "Removed from this version"}</small></span>
+                      <select aria-label={`Role for retained ${asset.name}`} disabled={!included} value={retained.find(c => c.assetId === comp.assetId)?.role || comp.role} onChange={e => setRetained(old => old.map(c => c.assetId === comp.assetId ? {...c, role: e.target.value as AssetRole} : c))}>{Object.entries(ROLE_LABELS).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
+                      <button type="button" className="button secondary" disabled={busy} onClick={() => {
+                        setFiles(old => old.filter(f => f.replaces !== comp.assetId));
+                        setRetained(old => included ? old.filter(c => c.assetId !== comp.assetId) : [...old, comp]);
+                      }}>{included ? "Remove" : "Keep"}</button>
+                      <label className="button secondary">Replace<input type="file" hidden disabled={busy} onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 10 * 1024 * 1024) { setError("Each file must be 10 MB or smaller."); return; }
+                        const role = retained.find(c => c.assetId === comp.assetId)?.role || comp.role;
+                        setFiles(old => [...old.filter(f => f.replaces !== comp.assetId), {file, role, replaces: comp.assetId}]);
+                        setRetained(old => old.filter(c => c.assetId !== comp.assetId));
+                        e.target.value = "";
+                      }}/></label>
+                    </div>
                   );
                 })}
                 <small>
-                  Uncheck a file when you upload its replacement. The earlier
-                  version stays in the history.
+                  Replacing removes the earlier file from this version only. All originals remain in history.
                 </small>
               </div>
             )}
@@ -558,6 +561,7 @@ export function SubmissionForm({
           >
             Cancel
           </button>
+          <button type="button" className="text-button" disabled={busy} onClick={() => { if (confirm("Discard this unfinished submission?")) { clearDrafts(draftKey); onClose(); } }}>Discard draft</button>
           <Submit busy={busy}>
             {existing ? "Save new version" : "Create submission"}
             <ArrowRight size={16} />
@@ -694,7 +698,7 @@ export function FindingForm({ review, onAction, onClose }: ActionProps) {
           <ErrorMessage error={error} />
         </div>
         <footer className="modal-footer">
-          <button className="button secondary" type="button" onClick={onClose}>
+          <button className="button secondary" type="button" onClick={onClose} disabled={busy}>
             Cancel
           </button>
           <Submit busy={busy}>
@@ -773,7 +777,7 @@ export function DispositionForm({
           <ErrorMessage error={error} />
         </div>
         <footer className="modal-footer">
-          <button className="button secondary" type="button" onClick={onClose}>
+          <button className="button secondary" type="button" onClick={onClose} disabled={busy}>
             Cancel
           </button>
           <Submit busy={busy}>{label}</Submit>
@@ -829,7 +833,7 @@ export function WaitingForm({ review, onAction, onClose }: ActionProps) {
           <ErrorMessage error={error} />
         </div>
         <footer className="modal-footer">
-          <button className="button secondary" type="button" onClick={onClose}>
+          <button className="button secondary" type="button" onClick={onClose} disabled={busy}>
             Cancel
           </button>
           <Submit busy={busy}>Mark waiting</Submit>
@@ -839,16 +843,18 @@ export function WaitingForm({ review, onAction, onClose }: ActionProps) {
   );
 }
 
-export function DecisionForm({ review, onAction, onClose }: ActionProps) {
+export function DecisionForm({ review, onAction, onClose, reviewerName = REVIEWER }: ActionProps) {
   const rev = currentRevision(review),
     blockers = openBlockers(review),
     confirmed = review.confirmedRevisionId === rev.id;
   const [outcome, setOutcome] = useState<"approved" | "rejected">("approved");
-  const [scope, setScope] = useState(rev.intendedUse);
-  const [rationale, setRationale] = useState("");
+  const draftKey = `decision/${review.id}/`;
+  const [scope, setScope] = useDraftState(draftKey + "scope", rev.intendedUse);
+  const [rationale, setRationale] = useDraftState(draftKey + "rationale", "");
   const [reviewed, setReviewed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => setReviewed(false), [review.version]);
   const blocked = outcome === "approved" && (!confirmed || blockers.length > 0);
   return (
     <Modal
@@ -869,6 +875,7 @@ export function DecisionForm({ review, onAction, onClose }: ActionProps) {
               rationale,
               reviewed,
             });
+            clearDrafts(draftKey);
             onClose();
           } catch (e) {
             setError((e as Error).message);
@@ -884,7 +891,7 @@ export function DecisionForm({ review, onAction, onClose }: ActionProps) {
               <strong>{review.title}</strong>
               <span>
                 {rev.components.filter((c) => c.role !== "excluded").length}{" "}
-                files · Version {rev.number} · {REVIEWER}
+                files · Version {rev.number} · {reviewerName}
               </span>
             </div>
           </div>
@@ -963,9 +970,10 @@ export function DecisionForm({ review, onAction, onClose }: ActionProps) {
           <ErrorMessage error={error} />
         </div>
         <footer className="modal-footer">
-          <button className="button secondary" type="button" onClick={onClose}>
+          <button className="button secondary" type="button" onClick={onClose} disabled={busy}>
             Back to review
           </button>
+          <button type="button" className="text-button" disabled={busy} onClick={() => { if (confirm("Discard this unfinished decision?")) { clearDrafts(draftKey); onClose(); } }}>Discard draft</button>
           <button
             className={`button ${outcome === "approved" ? "primary" : "danger"}`}
             type="submit"

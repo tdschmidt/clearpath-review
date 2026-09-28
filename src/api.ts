@@ -2,6 +2,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    public details?: { code?: string; currentVersion?: number; fields?: unknown },
   ) {
     super(message);
   }
@@ -13,6 +14,7 @@ export async function api<T>(url: string, options?: RequestInit): Promise<T> {
     throw new ApiError(
       body.error || "The request could not be saved. Please try again.",
       response.status,
+      body,
     );
   return body;
 }
