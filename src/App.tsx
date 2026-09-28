@@ -976,19 +976,29 @@ function Samples({ cases, onClose }: { cases: ReviewCase[]; onClose: () => void 
           <>
             <h3>Try a prepared case</h3>
             <p className="small-muted">
-              Open a stage of the review without recreating the earlier steps.
-              These are fictional records; changes you make are saved.
+              Open either side of the same review. The submitter page contains
+              shared feedback and ways to respond. Changes you make are saved.
             </p>
-            <div className="sample-downloads">
+            <div className="sample-prepared">
               {prepared.map((review) => (
-                <a key={review.id} href={`#review/${review.id}`} onClick={onClose}>
-                  <span className="download-icon"><FolderOpen size={20} /></span>
-                  <span>
-                    <strong>{review.title}</strong>
-                    <small>{review.reference} · Version {currentRevision(review).number}</small>
-                  </span>
-                  <ArrowRight size={18} />
-                </a>
+                <article key={review.id} aria-label={review.title}>
+                  <strong>{review.title}</strong>
+                  <small>{review.reference} · Version {currentRevision(review).number}</small>
+                  <div>
+                    <a href={`#review/${review.id}`} onClick={onClose}>
+                      Review case <ArrowRight size={14} />
+                    </a>
+                    {review.submitterToken && (
+                      <a
+                        href={`/submit/${encodeURIComponent(review.submitterToken)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Submitter page <ArrowUpRight size={14} />
+                      </a>
+                    )}
+                  </div>
+                </article>
               ))}
             </div>
             <h3>Or start from the original files</h3>

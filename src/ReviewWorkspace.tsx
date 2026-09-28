@@ -359,6 +359,16 @@ export function ReviewWorkspace({
             </p>
           </div>
           <div className="rw-heading-actions">
+            {review.submitterToken && (
+              <a
+                className="button secondary"
+                href={`/submit/${encodeURIComponent(review.submitterToken)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View submitter page <ArrowRight size={16} />
+              </a>
+            )}
             <button
               className="button secondary"
               onClick={() => onDialog("revision")}
