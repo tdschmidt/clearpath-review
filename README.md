@@ -4,17 +4,17 @@ A marketing-approval workspace for a fictional consumer-finance company, with a 
 
 **[Reviewer workspace](https://award-harrison-explore-messaging.trycloudflare.com)** · **[Submit material](https://award-harrison-explore-messaging.trycloudflare.com/submit)** · [Private GitHub repository](https://github.com/tdschmidt/clearpath-review)
 
-The production build, **21 API tests**, and **7 browser workflow tests** pass. Public page, API, original previews, and ZIP download were verified on September 27, 2026. This temporary URL works while the Mac, server, and tunnel stay running; restarting the tunnel creates a new URL.
+The production build, **31 API tests**, and **18 browser workflow tests** pass. The updated public workspace, submission page, source preview, API, originals, and ZIP download were verified on September 27, 2026. This temporary URL works while the Mac, server, and tunnel stay running; restarting the tunnel creates a new URL.
 
-Start with [why this product](docs/product-story.md) for the process reconstruction, stakeholders, bottleneck hypothesis, and deliberate cuts. The [current scope](docs/approval-workspace-plan.md), [research and alternatives](docs/research.md), and [submission-format evidence](docs/submission-format-research.md) provide supporting detail.
+Start with [what we built and why](docs/delivery-rundown.md) for the working product, audit changes, stakeholders, and deliberate limits. The [regulatory design basis](docs/regulatory-design-basis.md) maps specific sources to implemented choices and distinguishes legal requirements from product judgment. The [original product story](docs/product-story.md) reconstructs the process and bottleneck hypothesis; [research and alternatives](docs/research.md) and [submission-format evidence](docs/submission-format-research.md) provide supporting detail.
 
 The [automated-review decision](docs/research.md#decision-defer-automated-substantive-review) explains why rules, Jev, and LLM assistance were investigated and left outside this project. The [detailed research](docs/jev-ad-review-research.md) preserves their potential uses and a conditional evaluation plan.
 
-The [audit resolution](docs/audit-resolution.md) separates working features from remaining demo boundaries. The [implementation decisions](docs/implementation-decisions.md) connect changes to observed problems; commit bodies record the same rationale.
+The [audit resolution](docs/audit-resolution.md) separates working features from remaining demo boundaries. The [first implementation decisions](docs/implementation-decisions.md), [core workflow decisions](docs/core-workflow-decisions.md), [reviewer decisions](docs/reviewer-workflow-decisions.md), and [affiliate decisions](docs/external-workflow-decisions.md) connect focused commits to observed problems.
 
 ## Current scope
 
-Affiliates submit through `/submit` and keep a case return link. Reviewers choose a preserved offer reference, inspect material beside facts and findings, share selected feedback, and reconcile partial revisions. Responses never close findings automatically. Decisions identify an exact package and scope; publication and outside communication are recorded separately. Old decisions and withdrawals remain inspectable.
+Affiliates submit through `/submit` and keep a case return link. Reviewers choose a preserved offer reference, inspect material beside facts and findings, share selected feedback, and reconcile partial revisions. Returned evidence creates review attention and can be inspected beside the creative. Responses never close findings automatically. Decisions identify an exact package and scope; outstanding communication remains actionable until the result is deliberately shared or outside communication of an exact decision message is recorded. Old decisions and withdrawals remain inspectable.
 
 PNG/JPEG and multipage PDF previews work, including selectable embedded PDF text. Other formats remain downloadable. References have manually entered facts and page citations. **History & notes → Download internal record** exports verified original files, source documents, review snapshots, and handoffs. It includes internal reasoning; it is not an external reply.
 
@@ -62,8 +62,8 @@ npm run build
 npm run test:e2e
 ```
 
-The final build and **21 API / 7 browser tests** passed on September 27, 2026. Checks cover actual image/PDF uploads, exact source-page citations, partial corrections, server approval gates, private-field exclusion, frozen shared feedback, draft recovery, stale decision acknowledgment, reference versioning, withdrawal, and ZIP contents/download.
+The final build and **31 API / 18 browser tests** passed on September 27, 2026. Checks cover actual image/PDF uploads, exact source-page citations, partial corrections, server approval gates, private-field exclusion, frozen shared feedback, draft recovery, stale decision acknowledgment, reference versioning, withdrawal, and ZIP contents/download. Added regressions exercise returned evidence in a waiting case, request lists across feedback batches, changed-reference rechecks, internal and external draft conflicts, explicit inclusion of response files, and decision communication bound to an exact message version.
 
-A migration rehearsal preserved all four existing live cases and verified all seven original files by SHA-256. After the server upgrade, the public queue, submission form, API, originals, three persisted references, and ZIP download were checked again. These are workflow checks, not legal-accuracy measurements, authenticated access controls, or proof of time savings.
+A migration rehearsal preserved all four existing live cases and verified all seven original files by SHA-256. The subsequent core-fix deployment left all four case records byte-for-byte unchanged and verified all seven submitted originals plus three reference originals against their stored hashes. The public queue, submission form, adjacent source preview, current build, API, originals, references, and ZIP download were checked again. These are workflow checks, not legal-accuracy measurements, authenticated access controls, or proof of time savings.
 
 Browser tests use a separate server on port 3101 and temporary data. They use Playwright Chromium, falling back to system Chrome on macOS when available; otherwise run `npx playwright install chromium`. Build first so browser tests exercise the current frontend.

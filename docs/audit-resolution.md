@@ -20,6 +20,14 @@ The biggest remaining simulation is access control, not storage: uploads, revisi
 
 The card example illustrates that last distinction. Its “No annual fee” statement can match a product fact and still require a reviewer to consider applicable advertising disclosures. The future seed's context was corrected to say that explicitly; existing historical submissions and decisions were not rewritten.
 
+## Follow-up audit: complete the return loop
+
+The [second audit](product-audit-follow-up.md) found four consequential gaps in the chosen workflow. These are now addressed: response attachments open beside the creative and unassessed replies create queue attention; a changed offer or applicability basis requires rechecking earlier findings; internal and external drafts reconcile against their original package; and a recorded decision stays actionable until its communication is handled. Message records remain tied to exact saved versions, including after a conflicting save.
+
+The related interaction changes put the current concern, replacement, and returned evidence in one neutral assessment; keep all deliberately shared requests actionable across feedback batches; and combine explicit waiting or reviewer handoffs with the action that causes them. A returned file can be deliberately included in a new package, with its role and a fresh intake check. Smaller headings, optional finding classification, and focus movement leave more attention for the working material.
+
+The [delivery rundown](delivery-rundown.md) and linked decision records explain each choice. This increment does not implement the audit's V2 proposals: notifications, specialist action lists, context-sensitive intake guidance, reference-change impact review, or email ingestion. In particular, reference withdrawal blocks new approvals but does not create reassessment tasks for historical approvals or warn before an earlier recorded result is shared. That remains an explicit limit.
+
 ## Verification to read with the demo
 
 API tests cover state transitions, private-field exclusion, frozen sharing, source integrity, migration, and stale actions. Browser tests exercise real uploads, PDF pages, corrections, preserved drafts, decisions, and the separate submitter journey. The README records the final run and the walkthrough gives a short path through the product. These checks verify the implemented workflow; they do not measure legal accuracy or demonstrate net time savings.

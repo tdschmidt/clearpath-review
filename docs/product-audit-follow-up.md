@@ -2,6 +2,8 @@
 
 Audit of commit `4e68de1`, September 27, 2026. This is a recommendation, not a new implementation commitment. Application behavior and live review records were not changed.
 
+**Subsequent implementation:** the user authorized the core corrections. The [delivery rundown](delivery-rundown.md) and linked decision records describe that work. This audit remains the original findings and prioritization; its V2 proposals are not claims of implemented features.
+
 The strongest next investment is completing the return loop: a person supplies an answer, the right reviewer notices it, inspects its evidence, and makes an explicit disposition. The product already preserves much of the record correctly, but still makes people coordinate and reconstruct too much of the work.
 
 ## Basis and limits
