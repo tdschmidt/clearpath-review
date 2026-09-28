@@ -82,7 +82,7 @@ export function buildReviewExport(c: ReviewCase, offers: Offer[], assetsDir: str
       decision.findingSnapshot ? '**Finding snapshot captured at decision time**\n\n' + (decision.findingSnapshot.length ? decision.findingSnapshot.map(findingText).join('\n\n') : 'No findings existed when this decision was recorded.') : 'No finding snapshot was recorded for this decision. Current findings below may have changed; consult retained history and original material.',
     ]) : ['No decision has been recorded.']),
     '## Current findings at export',
-    c.findings.length ? c.findings.map(findingText).join('\n\n') : 'No findings are recorded. This does not represent automated clearance.',
+    c.findings.length ? c.findings.map(findingText).join('\n\n') : 'No findings are recorded.',
     '## Preserved package versions',
     ...c.revisions.flatMap(revision => [
       `### Version ${revision.number} — ${revision.id}`,

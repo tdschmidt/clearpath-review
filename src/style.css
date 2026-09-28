@@ -213,35 +213,6 @@ input[type="checkbox"] {
 .sidebar-bottom {
   margin-top: auto;
 }
-.sidebar-help {
-  margin: 30px 8px 15px;
-  padding: 20px 12px 10px;
-  border-top: 1px solid #dce4d8;
-  color: #59735c;
-}
-.sidebar-help h4 {
-  font-weight: 600;
-  font-size: 12px;
-  margin-top: 12px;
-}
-.sidebar-help p {
-  font-size: 11px;
-  line-height: 1.75;
-  margin-top: 6px;
-  color: #7a8878;
-}
-.sidebar-help button {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  margin-top: 12px;
-  background: none;
-  border: 0;
-  padding: 3px 0;
-  color: #4a6c53;
-}
 .sample-nav {
   display: flex;
   align-items: center;
@@ -333,19 +304,6 @@ input[type="checkbox"] {
   align-items: center;
   gap: 24px;
 }
-.human-review {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 10px;
-  color: #7f897d;
-}
-.human-review > span {
-  height: 5px;
-  width: 5px;
-  border-radius: 50%;
-  background: #699578;
-}
 main {
   padding: 37px 38px 45px;
   flex: 1;
@@ -379,9 +337,6 @@ main {
 }
 .page-heading h1 {
   margin-top: 9px;
-}
-.heading-dot {
-  color: #82a783;
 }
 .page-heading p:not(.eyebrow) {
   font-size: 12px;
@@ -2341,7 +2296,6 @@ main {
 .finding-number,
 .viewer-caption,
 .findings-footer p,
-.sidebar-help p,
 .table-sub,
 .queue-footnote p {
   color: #88947e;
@@ -2721,9 +2675,6 @@ main:has(.case-page) {
   }
   .topbar > div {
     gap: 10px;
-  }
-  .human-review {
-    font-size: 8px;
   }
   .topbar > span {
     gap: 8px;

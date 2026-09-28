@@ -134,7 +134,7 @@ export class WorkflowStore {
         createdAt: at, updatedAt: at, example: false, confirmedRevisionId: null,
         assets, revisions: [revision], findings: [], notes: [], decisions: [], drafts: [], history: [],
       };
-      this.event(c, 'submitted', 'Submission received. Intake and human review are pending.', input.submittedBy);
+      this.event(c, 'submitted', 'Submission received. Awaiting intake.', input.submittedBy);
       return this.insert(c);
     });
   }
@@ -195,7 +195,7 @@ export class WorkflowStore {
           this.validateOffer(revision.offerId, c.product, true);
           if (!revision.intendedUse.trim()) throw new WorkflowError(400, 'Describe the intended use before confirming intake.');
           c.confirmedRevisionId = revision.id; c.status = 'in_review'; c.nextOwner = REVIEWER; c.waitingReason = '';
-          this.event(c, 'intake_confirmed', `Intake confirmed for revision ${revision.number}. No automated compliance review was performed.`);
+          this.event(c, 'intake_confirmed', `Intake confirmed for revision ${revision.number}.`);
           break;
         case 'add_finding': {
           if (action.finding.assetId && !revision.components.some(component => component.assetId === action.finding.assetId && component.role !== 'excluded')) throw new WorkflowError(400, 'Choose an attachment in the current review package.');
@@ -227,13 +227,13 @@ export class WorkflowStore {
           break;
         case 'decide': {
           if (action.outcome === 'approved') {
-            if (c.confirmedRevisionId !== revision.id || !action.reviewed || !action.scope.trim()) throw new WorkflowError(400, 'Approval requires confirmed intake, completed human review, and an explicit scope.', 'approval_requirements');
+            if (c.confirmedRevisionId !== revision.id || !action.reviewed || !action.scope.trim()) throw new WorkflowError(400, 'Approval requires confirmed intake, completed review, and a decision scope.', 'approval_requirements');
             if (openBlockers(c).length) throw new WorkflowError(409, 'Material findings still need resolution or recheck.', 'unresolved_findings');
           } else if (!action.rationale.trim()) throw new WorkflowError(400, 'Provide a reason for rejecting this revision.');
           const offer = this.offers.find(item => item.id === revision.offerId);
           c.decisions.push({ id: id(), outcome: action.outcome, reviewer: REVIEWER, revisionId: revision.id, offerId: revision.offerId, scope: action.scope, rationale: action.rationale, createdAt: now(), findingSnapshot: structuredClone(c.findings), ...(offer ? { offerSnapshot: structuredClone(offer) } : {}) });
           c.status = action.outcome; c.nextOwner = ''; c.waitingReason = '';
-          this.event(c, action.outcome, `${action.outcome === 'approved' ? 'Approved' : 'Rejected'} revision ${revision.number} by human decision. ${action.scope}`);
+          this.event(c, action.outcome, `${action.outcome === 'approved' ? 'Approved' : 'Rejected'} revision ${revision.number}. ${action.scope}`);
           break;
         }
         case 'save_draft':

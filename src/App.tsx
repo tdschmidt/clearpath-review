@@ -200,18 +200,11 @@ export default function App() {
           </a>
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-help">
+          <button className="sample-nav" onClick={() => setDialog("guide")}>
             <BookOpen size={20} />
-            <h4>A considered review.</h4>
-            <p>
-              Keep the evidence close.
-              <br />
-              Make the next step clear.
-            </p>
-            <button onClick={() => setDialog("guide")}>
-              Review guide <ArrowUpRight size={15} />
-            </button>
-          </div>
+            Review guide
+            <ArrowUpRight size={15} />
+          </button>
           <button className="sample-nav" onClick={() => setDialog("samples")}>
             <FolderOpen size={17} />
             Sample materials
@@ -233,10 +226,6 @@ export default function App() {
             <span>Marketing compliance</span>
           </span>
           <div>
-            <span className="human-review">
-              <span />
-              Human-led review
-            </span>
             <button
               className="icon-button"
               aria-label="Refresh workspace"
@@ -261,7 +250,7 @@ export default function App() {
           {loading ? (
             <div className="page-loading">
               <LoaderCircle className="spin" size={24} />
-              Opening your workspace…
+              Loading submissions…
             </div>
           ) : selected ? (
             <CaseWorkspace
@@ -421,11 +410,7 @@ function Queue({
       <div className="page-heading">
         <div>
           <p className="eyebrow">MARKETING COMPLIANCE</p>
-          <h1>
-            Review queue
-            <span className="heading-dot">.</span>
-          </h1>
-          <p>The right material. Clear feedback. A confident next step.</p>
+          <h1>Review queue</h1>
         </div>
         <div className="heading-actions">
           <button className="button secondary" onClick={onSamples}>
@@ -445,8 +430,7 @@ function Queue({
               <LayoutList size={21} />
             </span>
             <div>
-              <strong>Your review desk</strong>
-              <span>Every submission has a next step.</span>
+              <strong>Review status</strong>
             </div>
           </div>
           <div className="overview-stat">
@@ -469,7 +453,7 @@ function Queue({
                 .length.toString()
                 .padStart(2, "0")}
             </strong>
-            <span>Ready for intake</span>
+            <span>Needs intake</span>
           </div>
         </div>
       )}
@@ -598,10 +582,6 @@ function Queue({
           <span>
             {rows.length} {rows.length === 1 ? "submission" : "submissions"}
           </span>
-          <span>
-            <ShieldCheck size={14} />
-            Decisions belong to people. Evidence stays with the review.
-          </span>
         </div>
       </section>
       <div className="queue-footnote">
@@ -609,12 +589,11 @@ function Queue({
           <BookOpen size={16} />
         </span>
         <p>
-          <strong>Start with a worked example.</strong> The sample cases contain
-          fictional, prewritten reviewer findings. Your own submissions start
-          with a blank review.
+          Sample cases include prewritten findings. New submissions start
+          without findings.
         </p>
         <button className="text-button" onClick={onSamples}>
-          Explore the materials <ArrowRight size={15} />
+          View sample files <ArrowRight size={15} />
         </button>
       </div>
     </div>
@@ -647,10 +626,8 @@ function DecisionRecord({
       <div className="page-heading">
         <div>
           <p className="eyebrow">MARKETING COMPLIANCE</p>
-          <h1>
-            Decision record<span className="heading-dot">.</span>
-          </h1>
-          <p>Each decision stays attached to the version and use it covered.</p>
+          <h1>Decision record</h1>
+          <p>Approvals and rejections by version.</p>
         </div>
         <button className="button primary" onClick={onNew}>
           <Plus size={17} />
@@ -747,16 +724,12 @@ function DecisionRecord({
             icon={<FileCheck2 size={28} />}
             title="No decisions in this view"
           >
-            Complete a human review to record a decision. Historical decisions
-            remain here when a new version is submitted.
+            Record a decision from a submission. Earlier decisions remain here
+            after revisions.
           </Empty>
         )}
         <div className="table-footer">
           <span>{records.length} decisions</span>
-          <span>
-            <ShieldCheck size={14} />
-            Exact versions. Explicit scope. Human decisions.
-          </span>
         </div>
       </section>
     </div>
@@ -1219,9 +1192,8 @@ function CaseWorkspace({
                     icon={<MessageSquare size={25} />}
                     title="No open reviewer findings"
                   >
-                    Inspect the complete material and add any concerns or
-                    evidence requests. This is not an automated compliance
-                    result.
+                    Review the files and copy. Add any issues or requests for
+                    missing evidence.
                   </Empty>
                 )}
                 {review.findings.some((f) => f.status !== "open") && (
@@ -1244,7 +1216,7 @@ function CaseWorkspace({
                     Prepare feedback
                     <ArrowRight size={16} />
                   </button>
-                  <p>Creates an editable reply. Internal notes stay private.</p>
+                  <p>Internal notes are excluded from the reply.</p>
                 </div>
               </>
             ) : (
@@ -1308,7 +1280,7 @@ function CaseWorkspace({
                     </li>
                   </ul>
                   <small>
-                    A reminder for human review, not a complete legal checklist.
+                    Apply the requirements for this product and placement.
                   </small>
                 </div>
               </div>
@@ -1485,12 +1457,8 @@ function CaseWorkspace({
               ))}
             </div>
           ) : (
-            <Empty
-              icon={<MessageSquare size={28} />}
-              title="Your feedback belongs together"
-            >
-              Prepare a clear reply from selected findings or the current
-              decision.
+            <Empty icon={<MessageSquare size={28} />} title="No reply drafts">
+              Prepare a reply from selected findings or the current decision.
             </Empty>
           )}
         </section>
@@ -1591,7 +1559,7 @@ function VersionHistory({
     <div className="versions-view">
       <div className="version-controls">
         <div>
-          <h2>Compare the actual material</h2>
+          <h2>Compare versions</h2>
           <p>Review all changes. A new version does not resolve a finding.</p>
         </div>
         <label>
@@ -1671,7 +1639,7 @@ function Samples({ onClose }: { onClose: () => void }) {
     [
       "Credit card creative",
       "/fixtures/card/social-ad.png",
-      "A separate product with a human review workflow.",
+      "Credit card social image.",
     ],
     [
       "Mortgage creative",
@@ -1681,8 +1649,8 @@ function Samples({ onClose }: { onClose: () => void }) {
   ];
   return (
     <Modal
-      title="A complete review, in miniature"
-      description="Fictional materials for exploring submissions, partial corrections, and final decisions."
+      title="Sample files"
+      description="Fictional creative, revisions, and offer references."
       onClose={onClose}
       wide
     >
@@ -1722,7 +1690,7 @@ function Samples({ onClose }: { onClose: () => void }) {
           ))}
         </div>
         <p className="small-muted">
-          Worked examples have prewritten human findings. Uploading these files
+          Sample cases include prewritten findings. Uploading these files
           yourself creates a fresh case with no findings. The materials are
           illustrative, not approved advertising.
         </p>
@@ -1738,44 +1706,38 @@ function Samples({ onClose }: { onClose: () => void }) {
 }
 function Guide({ onClose }: { onClose: () => void }) {
   return (
-    <Modal
-      title="Keep the review moving"
-      description="A shared place for the material, the reasoning, and the next step."
-      onClose={onClose}
-    >
+    <Modal title="Review steps" onClose={onClose}>
       <div className="modal-body guide-body">
         <div>
           <span>01</span>
-          <h3>Confirm what is being reviewed</h3>
+          <h3>Confirm the package</h3>
           <p>
-            Identify the actual creative, accompanying copy, relevant
-            destination, and offer. Request missing context rather than assuming
-            it.
+            Check the creative, copy, destination, and offer reference. Request
+            any missing material or context.
           </p>
         </div>
         <div>
           <span>02</span>
-          <h3>Make feedback actionable</h3>
+          <h3>Add findings</h3>
           <p>
-            Record the concern, its supporting basis, and what would address it.
-            Assign the next action to the person who can answer.
+            Record the issue, supporting evidence, requested change, and person
+            responsible.
           </p>
         </div>
         <div>
           <span>03</span>
-          <h3>Reconcile each revision</h3>
+          <h3>Review revisions</h3>
           <p>
-            Inspect the new material and all changes. Resolve individual
-            findings with a reason; keep outstanding questions visible.
+            Compare the updated material with the previous version. Resolve
+            addressed findings and leave unanswered requests open.
           </p>
         </div>
         <div>
           <span>04</span>
-          <h3>Record a specific decision</h3>
+          <h3>Record a decision</h3>
           <p>
-            Make your assessment against the current package and intended use.
-            Prepare a reply separately so a saved decision never implies an
-            email was sent.
+            State the version, approved use, and basis for the decision. Prepare
+            a reply to send through your email client.
           </p>
         </div>
       </div>

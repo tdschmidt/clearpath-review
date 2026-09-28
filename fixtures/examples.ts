@@ -95,12 +95,12 @@ const loan: ReviewCase = {
       material: true, status: 'open', createdAt: loanReviewAt, createdBy: reviewer, revisionId: 'loan-r1',
     },
   ],
-  notes: [{ id: 'loan-n1', text: 'Authored sample review: I compared the original social image with the supplied offer reference. Two material items remain. These are fixture findings, not automated analysis.', author: reviewer, createdAt: loanReviewAt }],
+  notes: [{ id: 'loan-n1', text: 'Sample review: I compared the original social image with the supplied offer reference. Two material findings remain open.', author: reviewer, createdAt: loanReviewAt }],
   decisions: [], drafts: [],
   history: [
     { id: 'loan-h1', type: 'submitted', text: 'Original image and offer reference received from Northstar. Destination URL supplied without a rendition.', actor: 'Nina Patel', createdAt: loanAt, revisionId: 'loan-r1' },
     { id: 'loan-h2', type: 'intake_confirmed', text: 'Confirmed image as creative and offer reference as supporting evidence. Missing destination recorded for follow-up.', actor: reviewer, createdAt: '2026-09-27T15:40:00.000Z', revisionId: 'loan-r1' },
-    { id: 'loan-h3', type: 'finding_added', text: 'Maya authored two sample findings: incorrect fee claim and missing destination rendition.', actor: reviewer, createdAt: loanReviewAt, revisionId: 'loan-r1' },
+    { id: 'loan-h3', type: 'finding_added', text: 'Two findings added: incorrect fee claim and missing destination rendition.', actor: reviewer, createdAt: loanReviewAt, revisionId: 'loan-r1' },
   ],
 };
 
@@ -119,7 +119,7 @@ const card: ReviewCase = {
     components: [{ assetId: 'card-ad', role: 'creative' }, { assetId: 'card-offer', role: 'evidence' }],
   }],
   findings: [],
-  notes: [{ id: 'card-n1', text: 'Authored sample note: the “No annual fee” statement agrees with CC-2026.09 / v2. Scope is the supplied brand-awareness image and caption only. A human decision is still required; no scan has approved this case.', author: reviewer, createdAt: '2026-09-27T15:15:00.000Z' }],
+  notes: [{ id: 'card-n1', text: 'Sample review: the “No annual fee” statement agrees with CC-2026.09 / v2. Scope is the supplied brand-awareness image and caption only. Decision pending.', author: reviewer, createdAt: '2026-09-27T15:15:00.000Z' }],
   decisions: [], drafts: [],
   history: [
     { id: 'card-h1', type: 'submitted', text: 'Brand-awareness image and supporting offer reference submitted.', actor: 'Alex Rivera', createdAt: cardAt, revisionId: 'card-r1' },
@@ -149,7 +149,7 @@ const mortgage: ReviewCase = {
     location: 'Destination / clearpath.example/mortgage', assetId: 'mortgage-ad', owner: 'Jordan Wells', material: true,
     status: 'open', createdAt: '2026-09-26T19:30:00.000Z', createdBy: reviewer, revisionId: 'mortgage-r1',
   }],
-  notes: [{ id: 'mortgage-n1', text: 'Authored sample review. Waiting on the affiliate’s destination rendition, not on another reviewer. Do not infer approval from the image alone.', author: reviewer, createdAt: '2026-09-26T20:00:00.000Z' }],
+  notes: [{ id: 'mortgage-n1', text: 'Sample review: waiting on the affiliate’s destination rendition. The linked page must be reviewed before approval.', author: reviewer, createdAt: '2026-09-26T20:00:00.000Z' }],
   decisions: [], drafts: [],
   history: [
     { id: 'mortgage-h1', type: 'submitted', text: 'Original JPG and offer reference received.', actor: 'Jordan Wells', createdAt: mortgageAt, revisionId: 'mortgage-r1' },

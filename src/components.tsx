@@ -342,8 +342,7 @@ export function AssetViewer({
                   : "Inspect this file manually"
               }
             >
-              Download the original file to review it. Its contents have not
-              been inspected by the application.
+              Download the original file to review it.
             </Empty>
           )}
         </div>

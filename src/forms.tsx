@@ -217,8 +217,8 @@ export function SubmissionForm({
       title={existing ? "Submit an updated package" : "New submission"}
       description={
         existing
-          ? "Keep unchanged material, replace what changed, and preserve the earlier version."
-          : "Give the reviewer the material and context they need to get started."
+          ? "Select the files to keep and upload any replacements."
+          : "Add the creative, offer reference, and intended use."
       }
       onClose={onClose}
       wide
@@ -233,8 +233,7 @@ export function SubmissionForm({
           {!existing && (
             <div className="sample-callout">
               <span>
-                <FolderOpen size={18} /> Just exploring? Start with a fictional
-                personal-loan ad.
+                <FolderOpen size={18} /> Sample personal-loan submission
               </span>
               <button
                 type="button"
@@ -549,7 +548,7 @@ export function SubmissionForm({
           <span className="footer-hint">
             {existing
               ? "Findings remain open until a reviewer resolves them."
-              : "A human reviewer makes the final decision."}
+              : "Submissions enter the intake queue."}
           </span>
           <button
             className="button secondary"
@@ -588,7 +587,7 @@ export function FindingForm({ review, onAction, onClose }: ActionProps) {
   return (
     <Modal
       title="Add a reviewer finding"
-      description={`Your observation and next step, attached to version ${rev.number}.`}
+      description={`Version ${rev.number}`}
       onClose={onClose}
       busy={busy}
     >
@@ -792,7 +791,7 @@ export function WaitingForm({ review, onAction, onClose }: ActionProps) {
   return (
     <Modal
       title="Who are we waiting on?"
-      description="Make the next action clear without losing the reviewer's ownership."
+      description="Enter who needs to respond and what is needed."
       onClose={onClose}
       busy={busy}
     >
@@ -958,10 +957,6 @@ export function DecisionForm({ review, onAction, onClose }: ActionProps) {
               />
               <span>
                 I have reviewed this package and the applicable requirements.
-                <small>
-                  This is my review decision. The application does not assess
-                  legal compliance.
-                </small>
               </span>
             </label>
           )}
