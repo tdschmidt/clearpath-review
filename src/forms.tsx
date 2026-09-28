@@ -24,6 +24,7 @@ import {
   assetUrl,
   openBlockers,
   pendingResponses,
+  requestSharingState,
   PRODUCT_LABELS,
   REVIEWER,
   ROLE_LABELS,
@@ -1608,6 +1609,9 @@ export function DraftForm({
                   />
                   <span>
                     {f.title} · {f.material ? "Required" : "Advice"}
+                    {requestSharingState(review, f) === "updated" && (
+                      <small>Updated request not yet shared</small>
+                    )}
                   </span>
                 </label>
               ))}

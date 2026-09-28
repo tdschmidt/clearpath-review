@@ -288,6 +288,21 @@ export const openBlockers = (c: ReviewCase) =>
   );
 export const pendingResponses = (c: ReviewCase) =>
   (c.responses || []).filter(response => !response.assessment);
+// Use the same public projection for publishing and detecting changed instructions.
+export const submitterRequestSnapshot = (c: ReviewCase, f: Finding): PublishedFeedback["findings"][number] => ({
+  id: f.id, number: f.number, title: f.title, request: f.request, location: f.location, material: f.material,
+  citations: (f.citations || []).filter(citation => c.revisions.some(revision => revision.id === citation.revisionId && revision.components.some(component => component.assetId === citation.assetId && ['creative', 'destination'].includes(component.role))))
+    .map(({ revisionId, assetId, page }) => ({ revisionId, assetId, ...(page ? { page } : {}) })),
+});
+export const requestSharingState = (c: ReviewCase, finding: Finding): "new" | "updated" | "shared" => {
+  const latest = [...(c.publishedFeedback || [])].reverse().flatMap(batch => batch.findings).find(item => item.id === finding.id);
+  if (!latest) return "new";
+  const signature = (item: PublishedFeedback["findings"][number]) => JSON.stringify({
+    title: item.title, request: item.request, location: item.location, material: item.material,
+    citations: [...new Set((item.citations || []).map(citation => JSON.stringify([citation.revisionId, citation.assetId, citation.page || 1])))].sort(),
+  });
+  return signature(submitterRequestSnapshot(c, finding)) === signature(latest) ? "shared" : "updated";
+};
 export const decisionHandoff = (c: ReviewCase, decision?: Decision): "pending" | "shared" | "recorded" => {
   const target = decision || [...c.decisions].reverse().find(item => item.revisionId === currentRevision(c).id && !item.withdrawn);
   if (target && c.publishedResults?.some(result => result.decisionId === target.id && !result.withdrawn)) return "shared";

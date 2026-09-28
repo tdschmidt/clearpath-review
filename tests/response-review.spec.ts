@@ -225,6 +225,81 @@ test("received answers must be assessed before approval and before its handoff",
   ).toHaveCount(0);
 });
 
+test("a changed obligation is marked unsent until the affiliate receives the updated request", async ({
+  page,
+}) => {
+  const { review, token } = await createReview(
+    page.request,
+    "Changed request handoff",
+  );
+  const finding = {
+    kind: "correction" as const,
+    title: "Disclosure placement",
+    detail: "Private review basis",
+    request: "Put the disclosure beside the headline.",
+    location: "Headline",
+    assetId: review.assets[0].id,
+    owner: review.submitter,
+    material: false,
+    audience: "submitter" as const,
+  };
+  let current = await internalAction(page.request, review.id, {
+    type: "add_finding",
+    finding,
+  });
+  current = await internalAction(page.request, review.id, {
+    type: "publish_feedback",
+    findingIds: [current.findings[0].id],
+    subject: "Feedback",
+    body: "Please check the disclosure placement.",
+  });
+  await internalAction(page.request, review.id, {
+    type: "edit_finding",
+    findingId: current.findings[0].id,
+    finding: { ...finding, material: true },
+  });
+  await page.goto(`/submit/${token}`);
+  const before: SubmitterCase = await (
+    await page.request.get(`/api/submissions/${token}`)
+  ).json();
+  expect(before.sharedRequests[0].material).toBe(false);
+  await page.goto(`/#review/${review.id}`);
+  await expect(
+    page.getByText(
+      "1 new or updated request has not been shared with the submitter.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Prepare feedback", exact: true })
+    .first()
+    .click();
+  const reply = page.getByRole("dialog", { name: "Prepare a reply" });
+  await expect(
+    reply.getByText("Updated request not yet shared", { exact: true }),
+  ).toBeVisible();
+  await browserAction(page, review.id, () =>
+    reply
+      .getByRole("button", { name: "Share feedback on submission link" })
+      .click(),
+  );
+  await expect(
+    page.getByText(
+      "1 new or updated request has not been shared with the submitter.",
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+  await page.goto(`/submit/${token}`);
+  const after: SubmitterCase = await (
+    await page.request.get(`/api/submissions/${token}`)
+  ).json();
+  expect(after.sharedRequests[0].material).toBe(true);
+  expect(after.feedback[0].findings[0].material).toBe(false);
+  await expect(
+    page.getByText("Private review basis", { exact: true }),
+  ).toHaveCount(0);
+});
+
 test("a withdrawal while a reply is open blocks sharing until a new review decision", async ({
   page,
 }) => {

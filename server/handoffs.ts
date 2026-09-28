@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { currentRevision, pendingResponses } from '../shared/types.ts';
+import { currentRevision, pendingResponses, submitterRequestSnapshot } from '../shared/types.ts';
 import type { CaseAction, FindingInput, Offer, ReviewCase } from '../shared/types.ts';
 import { participant } from './references.ts';
 import { WorkflowError } from './store.ts';
@@ -63,12 +63,8 @@ export function applyHandoff(c: ReviewCase, action: CaseAction, actor: string, o
         if (!finding || finding.audience !== 'submitter' || (finding.status !== 'open' && !finding.needsRecheck)) throw new WorkflowError(400, 'Share only pending findings explicitly addressed to the submitter.');
         return finding;
       });
-      const shareableAssets = new Set(c.revisions.flatMap(item => item.components.filter(component => ['creative', 'destination'].includes(component.role)).map(component => component.assetId)));
-      const findings = selected.map(finding => ({
-        id: finding.id, number: finding.number, title: finding.title, request: finding.request, location: finding.location,
-        material: finding.material, citations: (finding.citations || []).filter(citation => shareableAssets.has(citation.assetId)).map(({ revisionId, assetId, page }) => ({ revisionId, assetId, ...(page ? { page } : {}) })),
-      }));
-      c.submitterAssetIds = [...new Set([...(c.submitterAssetIds || []), ...findings.flatMap(finding => finding.citations.map(citation => citation.assetId))])];
+      const findings = selected.map(finding => submitterRequestSnapshot(c, finding));
+      c.submitterAssetIds = [...new Set([...(c.submitterAssetIds || []), ...findings.flatMap(finding => (finding.citations || []).map(citation => citation.assetId))])];
       c.publishedFeedback ??= [];
       c.publishedFeedback.push({ id: randomUUID(), revisionId: revision.id, createdAt: now(), publishedBy: actor, subject: action.subject, body: action.body, findings });
       c.submitterToken ||= randomBytes(24).toString('base64url');

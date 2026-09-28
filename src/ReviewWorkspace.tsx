@@ -28,6 +28,7 @@ import {
   currentRevision,
   openBlockers,
   pendingResponses,
+  requestSharingState,
   pendingDecisionHandoff,
   PRODUCT_LABELS,
   ROLE_LABELS,
@@ -166,17 +167,7 @@ export function ReviewWorkspace({
   const needIntake = review.confirmedRevisionId !== rev.id && !closed(review);
   const unshared = pending.filter(
     (f) =>
-      f.audience === "submitter" &&
-      !(review.publishedFeedback || []).some(
-        (p) =>
-          p.revisionId === rev.id &&
-          p.findings.some(
-            (shared) =>
-              shared.id === f.id &&
-              shared.request === f.request &&
-              shared.title === f.title,
-          ),
-      ),
+      f.audience === "submitter" && requestSharingState(review, f) !== "shared",
   );
 
   useEffect(() => {
@@ -319,7 +310,7 @@ export function ReviewWorkspace({
               : unshared.length
                 ? {
                     title: "Prepare feedback",
-                    text: `${unshared.length} submitter request${unshared.length === 1 ? " has" : "s have"} not been shared for this version.`,
+                    text: `${unshared.length} new or updated request${unshared.length === 1 ? " has" : "s have"} not been shared with the submitter.`,
                   }
                 : blockers.length
                   ? {
@@ -416,6 +407,7 @@ export function ReviewWorkspace({
           {!needIntake &&
             !closed(review) &&
             !rechecks.length &&
+            !received.length &&
             unshared.length > 0 && (
               <button
                 className="button primary"

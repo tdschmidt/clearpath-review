@@ -10,7 +10,7 @@ import { createApp } from './app.ts';
 import { buildReviewExport } from './export.ts';
 import { WorkflowStore } from './store.ts';
 import { offers, examples } from '../fixtures/examples.ts';
-import { currentRevision, pendingResponses, decisionHandoff, pendingDecisionHandoff, REVIEWER } from '../shared/types.ts';
+import { currentRevision, pendingResponses, requestSharingState, decisionHandoff, pendingDecisionHandoff, REVIEWER } from '../shared/types.ts';
 import type { ReviewCase, SubmissionInput } from '../shared/types.ts';
 
 const png = readFileSync('public/fixtures/loan/v1/social-ad.png');
@@ -601,6 +601,49 @@ test('published feedback separates audience and freezes requests; responses and 
   c = (await h.action(c, { type: 'rotate_submitter_link' })).body;
   assert.notEqual(c.submitterToken, originalToken);
   assert.equal((await h.json(`/api/submissions/${originalToken}`)).status, 404);
+});
+
+test('changed instructions compare all public fields with the latest shared request across revisions', async t => {
+  const s = await setup(t);
+  let c: ReviewCase = (await s.multipart('/api/cases', { ...base, fileRoles: ['destination', 'evidence'] }, [{ name: 'destination.pdf', bytes: destination }, { name: 'private.pdf', bytes: destination }])).body;
+  c = (await s.action(c, { type: 'confirm_intake' })).body;
+  let input = { kind: 'correction', title: 'Disclosure placement', detail: 'Private basis', request: 'Move the disclosure closer to the claim.', location: 'Footer', assetId: c.assets[0].id, owner: 'Nina Patel', material: false, audience: 'submitter', citations: [{ revisionId: currentRevision(c).id, assetId: c.assets[0].id, page: 1, note: 'Private citation note' }] };
+  c = (await s.action(c, { type: 'add_finding', finding: input })).body;
+  const findingId = c.findings[0].id;
+  const state = () => requestSharingState(c, c.findings[0]);
+  const share = async () => { c = (await s.action(c, { type: 'publish_feedback', findingIds: [findingId], subject: 'Feedback', body: 'Please review the current request.' })).body; };
+  const edit = async (changes: Partial<typeof input>) => {
+    input = { ...input, ...changes };
+    c = (await s.action(c, { type: 'edit_finding', findingId, finding: input })).body;
+  };
+  assert.equal(state(), 'new');
+  await share();
+  const original = structuredClone(c.publishedFeedback![0]);
+  assert.equal(state(), 'shared');
+  await edit({ material: true });
+  assert.equal(state(), 'updated');
+  let external = (await s.json(`/api/submissions/${c.submitterToken}`)).body;
+  assert.equal(external.sharedRequests[0].material, false, 'Recipient instructions change only on deliberate sharing.');
+  await share();
+  assert.equal(state(), 'shared');
+  external = (await s.json(`/api/submissions/${c.submitterToken}`)).body;
+  assert.equal(external.sharedRequests[0].material, true);
+  await edit({ material: false });
+  assert.equal(state(), 'updated', 'Reverting to any older snapshot is still a change from the latest instruction.');
+  await share();
+  for (const changes of [{ location: 'Headline' }, { citations: [{ ...input.citations[0], page: 2 }] }, { request: 'Show both claim and disclosure on the first page.' }]) {
+    await edit(changes);
+    assert.equal(state(), 'updated');
+    await share();
+    assert.equal(state(), 'shared');
+  }
+  await edit({ detail: 'Changed private analysis', owner: 'Priya Shah', citations: [...input.citations, { revisionId: currentRevision(c).id, assetId: c.assets[1].id, page: 1, note: 'Internal evidence only' }] });
+  assert.equal(state(), 'shared', 'Internal basis, ownership, and private evidence do not create a communication task.');
+  c = (await s.revise(c, { summary: 'Context note; public instructions unchanged.' })).body;
+  assert.equal(state(), 'shared', 'A new package does not automatically require resending unchanged instructions.');
+  assert.deepEqual(c.publishedFeedback![0], original);
+  external = (await s.json(`/api/submissions/${c.submitterToken}`)).body;
+  for (const secret of ['Private citation note', 'Changed private analysis', 'private.pdf', 'Internal evidence only']) assert.ok(!JSON.stringify(external).includes(secret));
 });
 
 test('offer applicability requires a human explanation and withdrawal invalidates intake and approval', async t => {
