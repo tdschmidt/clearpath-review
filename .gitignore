@@ -1,0 +1,27 @@
+# Local working research contains private interview material and draft notes.
+# The repository-facing synthesis lives in docs/.
+/research/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS/editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Common generated dependencies and build output
+node_modules/
+.next/
+dist/
+build/
+coverage/
+.venv/
+__pycache__/
+*.pyc
+*.log
