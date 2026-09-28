@@ -313,21 +313,26 @@
   background: #f8ece3;
   color: #855329;
 }
-.partner-return-link {
+.partner-return-link-disclosure {
   border: 1px solid #d8e2d2;
   background: #edf3e8;
   border-radius: 8px;
-  padding: 18px;
   margin-bottom: 24px;
+}
+.partner-return-link-disclosure > summary {
+  padding: 14px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.partner-return-link {
+  padding: 0 18px 18px;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
 }
 .partner-return-link > div {
   grid-column: 1 / -1;
-}
-.partner-return-link strong {
-  font-size: 13px;
 }
 .partner-return-link p {
   font-size: 12px;

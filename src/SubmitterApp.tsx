@@ -384,37 +384,46 @@ export default function SubmitterApp() {
                     Check for updates
                   </button>
                 </div>
-                <div className="partner-return-link">
-                  <div>
-                    <strong>Your return link</strong>
-                    <p>
-                      Anyone with this link can view this submission and send
-                      updates. Keep it for this review.
-                    </p>
+                <details
+                  className="partner-return-link-disclosure"
+                  open={
+                    receipt &&
+                    submission.status === "received" &&
+                    submission.responses.length === 0
+                  }
+                >
+                  <summary>Your return link</summary>
+                  <div className="partner-return-link">
+                    <div>
+                      <p>
+                        Anyone with this link can view this submission and send
+                        updates. Keep it for this review.
+                      </p>
+                    </div>
+                    <input
+                      aria-label="Your return link"
+                      readOnly
+                      value={returnLink}
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <button
+                      className="button secondary"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(returnLink);
+                          setCopied(true);
+                        } catch {
+                          setError(
+                            "Select the return link above and copy it manually.",
+                          );
+                        }
+                      }}
+                    >
+                      {copied ? <Check size={16} /> : <Copy size={16} />}
+                      {copied ? "Copied" : "Copy link"}
+                    </button>
                   </div>
-                  <input
-                    aria-label="Your return link"
-                    readOnly
-                    value={returnLink}
-                    onFocus={(e) => e.target.select()}
-                  />
-                  <button
-                    className="button secondary"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(returnLink);
-                        setCopied(true);
-                      } catch {
-                        setError(
-                          "Select the return link above and copy it manually.",
-                        );
-                      }
-                    }}
-                  >
-                    {copied ? <Check size={16} /> : <Copy size={16} />}
-                    {copied ? "Copied" : "Copy link"}
-                  </button>
-                </div>
+                </details>
                 {submission.status === "cancelled" && (
                   <section className="partner-card partner-alert">
                     <h2>This review is closed</h2>

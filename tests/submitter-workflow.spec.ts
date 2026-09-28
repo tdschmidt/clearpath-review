@@ -156,6 +156,13 @@ test("all shared requests remain actionable across feedback batches, and only ex
   });
 
   await page.goto(`/submit/${receipt.token}`);
+  await expect(page.getByLabel("Your return link")).not.toBeVisible();
+  await page.getByText("Your return link", { exact: true }).click();
+  await expect(page.getByLabel("Your return link")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Copy link", exact: true }),
+  ).toBeVisible();
+  await page.getByText("Your return link", { exact: true }).click();
   const requests = page.getByRole("region", {
     name: "Requests from the reviewer",
   });
@@ -341,6 +348,7 @@ test("an external submitter returns to shared feedback, supplies real revisions,
     }),
   ).toBeVisible();
   expect(page.url()).toContain(`/submit/${receipt.token}`);
+  await expect(page.getByLabel("Your return link")).toBeVisible();
   await expect(page.getByLabel("Your return link")).toHaveValue(
     new RegExp(receipt.token),
   );
