@@ -99,6 +99,22 @@ async function setup(t: TestContext, seedDemo = false) {
   return { app, dataDir, url, json, multipart, action, revise, initialAssetCount: readdirSync(join(dataDir, 'assets')).length };
 }
 
+test('the card example requires resolving its known disclosure question before approval', async t => {
+  const h = await setup(t);
+  const c: ReviewCase = (await h.json('/api/examples/credit-card', {})).body;
+  assert.equal(c.findings.length, 1);
+  const finding = c.findings[0];
+  assert.equal(finding.material, true);
+  assert.equal(finding.status, 'open');
+  assert.equal(finding.audience, 'submitter');
+  assert.equal(finding.revisionId, currentRevision(c).id);
+  assert.ok(currentRevision(c).components.some(component => component.assetId === finding.assetId && component.role === 'creative'));
+  assert.equal((await h.action(c, approved)).body.code, 'unresolved_findings');
+  const shared = (await h.action(c, { type: 'publish_feedback', findingIds: [finding.id], subject: 'Card disclosure review', body: finding.request })).body as ReviewCase;
+  const external = (await h.json(`/api/submissions/${shared.submitterToken}`)).body;
+  assert.equal(external.feedback[0].findings[0].request, finding.request);
+});
+
 test('a partial revision keeps its unresolved findings; approval belongs only to the reviewed revision', async t => {
   const h = await setup(t);
   let result = await h.json('/api/examples/personal-loan', {});
@@ -450,7 +466,8 @@ test('legacy migration backs up records and preserves original IDs and bytes wit
     assert.equal(c.submitterToken, undefined);
     assert.deepEqual(c.submitterAssetIds, []);
     assert.ok(c.revisions.every(revision => revision.contextInherited));
-    assert.ok(c.findings.every(finding => finding.audience === 'internal'));
+    const previous = before.find(item => item.id === c.id)!;
+    assert.ok(c.findings.every(finding => finding.audience === (previous.findings.find(item => item.id === finding.id)?.audience || 'internal')));
     c.assets.forEach(asset => assert.equal(createHash('sha256').update(readFileSync(join(h.dataDir, 'assets', asset.id))).digest('hex'), asset.sha256));
   }
   migrated.close();

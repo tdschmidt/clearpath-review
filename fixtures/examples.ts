@@ -118,12 +118,20 @@ const card: ReviewCase = {
     copy: 'Meet ClearPath Everyday. Simple by design. No annual fee. Credit approval required.', destinationUrl: '',
     components: [{ assetId: 'card-ad', role: 'creative' }, { assetId: 'card-offer', role: 'evidence' }],
   }],
-  findings: [],
+  findings: [{
+    id: 'card-f1', number: 1, kind: 'evidence', title: 'Disclosures for the no-annual-fee claim',
+    detail: 'The image and caption advertise no annual fee for a consumer credit card. Regulation Z §1026.16(b)(1), comment 1, explicitly includes negative annual-membership-fee claims as triggering additional disclosures. The supplied reference supports the $0 fee but omits the other terms needed for this review. Brand-awareness framing and the absence of an application CTA do not resolve this concern. Basis: https://www.consumerfinance.gov/rules-policy/regulations/1026/16/#b-1',
+    request: 'Supply current offer terms covering applicable APRs and any variable-rate feature, finance charges, and membership or participation fees. Return revised advertising with the applicable disclosures for review, or remove the fee claim from both image and caption and resubmit. Do not invent missing terms.',
+    location: 'No annual fee — image footer and caption', assetId: 'card-ad',
+    owner: 'Alex Rivera', material: true, audience: 'submitter', status: 'open',
+    createdAt: '2026-09-27T15:15:00.000Z', createdBy: reviewer, revisionId: 'card-r1',
+  }],
   notes: [{ id: 'card-n1', text: 'Sample review: the “No annual fee” statement agrees with CC-2026.09 / v2. That match alone does not complete advertising review. Assess applicable fee-advertising disclosures for this image and caption before deciding. Decision pending.', author: reviewer, createdAt: '2026-09-27T15:15:00.000Z' }],
   decisions: [], drafts: [],
   history: [
     { id: 'card-h1', type: 'submitted', text: 'Brand-awareness image and supporting offer reference submitted.', actor: 'Alex Rivera', createdAt: cardAt, revisionId: 'card-r1' },
     { id: 'card-h2', type: 'intake_confirmed', text: 'Confirmed the image, caption, offer version, and limited intended use.', actor: reviewer, createdAt: '2026-09-27T15:00:00.000Z', revisionId: 'card-r1' },
+    { id: 'card-h3', type: 'finding_added', text: 'Required finding added for disclosure review of the no-annual-fee claim. Further offer terms and revised advertising are needed.', actor: reviewer, createdAt: '2026-09-27T15:15:00.000Z', revisionId: 'card-r1' },
   ],
 };
 

@@ -25,7 +25,7 @@ Suggested revision summaries:
 
 | Key / title | Files | Starting state |
 | --- | --- | --- |
-| `credit-card` / Everyday, simply | `card/social-ad.png` + `offers/credit-card.pdf` | In review. A limited brand-awareness image and caption, without an application CTA or destination. No open findings. Decision pending. |
+| `credit-card` / Everyday, simply | `card/social-ad.png` + `offers/credit-card.pdf` | In review. One required finding requests terms and disclosure review for the no-annual-fee claim in both image and caption. The supplied reference is incomplete for this purpose; no application CTA does not exempt the advertisement. Decision pending. |
 | `mortgage` / A clearer first step home | `mortgage/social-ad.jpg` + `offers/mortgage.pdf` | Waiting for Jordan Wells at Harbor Home to supply the prequalification destination. The JPEG and reference do not complete that scope. |
 | Optional manual evidence | `unsupported-evidence.txt` | A note about a missing landing page. Download to inspect; no preview is available. It is not a destination rendition. |
 
