@@ -27,3 +27,9 @@ An internal revision now defaults “Updated by” to the active demo reviewer, 
 ## Keep evidence tied to the selected finding
 
 Selecting another finding clears the previous source/evidence pane before opening that finding's original material, if any. An uncited request must not inherit an unrelated image from the previous assessment. This addresses a misleading visual context without changing preserved evidence or adding document analysis.
+
+## Make source withdrawal actionable before sharing
+
+The queue and case banner identify a withdrawn reference supporting the current approval, including a result already shared. The next action leads to a new revision with a current source; the old decision stays in history. Withdrawn sources cannot be newly selected in the submission picker, while an existing historical selection remains visible and labeled. Nothing silently substitutes a new reference or revokes a human decision.
+
+Completed-case banners also distinguish a shared result, a recorded outside communication, and an uncommunicated decision. Only the latter asks for a handoff; recording an email does not claim verified delivery. These corrections keep next actions consistent with the record and avoid redundant work.

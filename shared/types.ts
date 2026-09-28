@@ -313,6 +313,10 @@ export const pendingDecisionHandoff = (c: ReviewCase): Decision | undefined => {
   const decision = [...c.decisions].reverse().find(item => item.revisionId === currentRevision(c).id && !item.withdrawn);
   return decision && decisionHandoff(c, decision) === "pending" ? decision : undefined;
 };
+export const withdrawnApprovalReference = (c: ReviewCase, offers: Offer[]): Offer | undefined => {
+  const decision = [...c.decisions].reverse().find(item => item.revisionId === currentRevision(c).id && !item.withdrawn);
+  return decision?.outcome === "approved" ? offers.find(offer => offer.id === decision.offerId && offer.withdrawnAt) : undefined;
+};
 export const assetUrl = (caseId: string, assetId: string, download = false) =>
   `/api/cases/${encodeURIComponent(caseId)}/assets/${encodeURIComponent(assetId)}${download ? "?download=1" : ""}`;
 

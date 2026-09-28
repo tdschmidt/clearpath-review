@@ -30,6 +30,8 @@ import {
   pendingResponses,
   requestSharingState,
   pendingDecisionHandoff,
+  decisionHandoff,
+  withdrawnApprovalReference,
   PRODUCT_LABELS,
   ROLE_LABELS,
   PARTICIPANTS,
@@ -148,6 +150,7 @@ export function ReviewWorkspace({
     (d) => d.revisionId === rev.id && !d.withdrawn,
   );
   const handoff = pendingDecisionHandoff(review);
+  const withdrawnApproval = withdrawnApprovalReference(review, offers);
   const selectedDecision = review.decisions.find((d) => d.id === decisionId);
   const missing = [
     !offer && "Select the applicable offer reference",
@@ -297,8 +300,20 @@ export function ReviewWorkspace({
           }
         : currentDecision
           ? {
-              title: "Decision recorded",
-              text: `Version ${rev.number} · ${currentDecision.outcome}. Share the result with the submitter when ready.`,
+              title: withdrawnApproval
+                ? "Approval reference withdrawn"
+                : decisionHandoff(review, currentDecision) === "shared"
+                  ? "Decision shared"
+                  : decisionHandoff(review, currentDecision) === "recorded"
+                    ? "Communication recorded"
+                    : "Decision recorded",
+              text: withdrawnApproval
+                ? "Check whether the earlier approval still applies. Sharing is blocked; review a new revision with a current reference before sharing another approval."
+                : decisionHandoff(review, currentDecision) === "shared"
+                  ? `Version ${rev.number} · ${currentDecision.outcome}. The scoped result is available on the submitter page.`
+                  : decisionHandoff(review, currentDecision) === "recorded"
+                    ? `Version ${rev.number} · ${currentDecision.outcome}. Outside communication has been recorded; delivery is not verified.`
+                    : `Version ${rev.number} · ${currentDecision.outcome}. Share the result with the submitter when ready.`,
             }
           : review.status === "cancelled"
             ? {
@@ -420,7 +435,15 @@ export function ReviewWorkspace({
                 Prepare feedback
               </button>
             )}
-          {handoff && (
+          {withdrawnApproval && !received.length && (
+            <button
+              className="button primary"
+              onClick={() => onDialog("revision")}
+            >
+              Review with current reference
+            </button>
+          )}
+          {handoff && !withdrawnApproval && !received.length && (
             <>
               <button
                 className="button primary"

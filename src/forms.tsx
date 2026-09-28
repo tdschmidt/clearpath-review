@@ -570,13 +570,29 @@ export function SubmissionForm({
                 >
                   <option value="">Not provided yet</option>
                   {offers
-                    .filter((o) => o.product === data.product)
+                    .filter(
+                      (o) =>
+                        o.product === data.product &&
+                        (!o.withdrawnAt || o.id === data.offerId),
+                    )
                     .map((o) => (
-                      <option key={o.id} value={o.id}>
+                      <option
+                        key={o.id}
+                        value={o.id}
+                        disabled={!!o.withdrawnAt}
+                      >
                         {o.name} · {o.version}
+                        {o.withdrawnAt ? " · Withdrawn" : ""}
                       </option>
                     ))}
                 </select>
+                {offers.some((o) => o.id === data.offerId && o.withdrawnAt) && (
+                  <small>
+                    This package used a withdrawn reference. Select a current
+                    reference before confirming intake; earlier versions keep
+                    their original source.
+                  </small>
+                )}
               </Field>
             </div>
             <div className="form-grid">

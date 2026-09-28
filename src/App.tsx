@@ -23,13 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { api, ApiError, json } from "./api";
-import {
-  date,
-  Empty,
-  ErrorMessage,
-  Modal,
-  Status,
-} from "./components";
+import { date, Empty, ErrorMessage, Modal, Status } from "./components";
 import {
   DecisionForm,
   DraftForm,
@@ -42,6 +36,7 @@ import {
   openBlockers,
   pendingResponses,
   pendingDecisionHandoff,
+  withdrawnApprovalReference,
   PRODUCT_LABELS,
   REVIEWER,
   type Offer,
@@ -223,7 +218,10 @@ export default function App() {
   }
   const activeCount = cases.filter(
     (c) =>
-      !isClosed(c) || pendingDecisionHandoff(c) || pendingResponses(c).length,
+      !isClosed(c) ||
+      pendingDecisionHandoff(c) ||
+      pendingResponses(c).length ||
+      withdrawnApprovalReference(c, offers),
   ).length;
   return (
     <div className={`app-shell ${selected ? "case-open" : ""}`}>
@@ -351,6 +349,7 @@ export default function App() {
             />
           ) : (
             <Queue
+              offers={offers}
               cases={cases}
               page={page}
               onNew={() => setDialog("new")}
@@ -396,7 +395,9 @@ export default function App() {
           onClose={() => setDialog(null)}
         />
       )}
-      {dialog === "samples" && <Samples cases={cases} onClose={() => setDialog(null)} />}
+      {dialog === "samples" && (
+        <Samples cases={cases} onClose={() => setDialog(null)} />
+      )}
       {dialog === "guide" && <Guide onClose={() => setDialog(null)} />}
       {selected && (
         <>
@@ -467,11 +468,13 @@ function age(value: string) {
 
 function Queue({
   cases,
+  offers,
   page,
   onNew,
   onSamples,
 }: {
   cases: ReviewCase[];
+  offers: Offer[];
   page: Page;
   onNew: () => void;
   onSamples: () => void;
@@ -486,7 +489,10 @@ function Queue({
   }, [page]);
   const active = cases.filter(
     (c) =>
-      !isClosed(c) || pendingDecisionHandoff(c) || pendingResponses(c).length,
+      !isClosed(c) ||
+      pendingDecisionHandoff(c) ||
+      pendingResponses(c).length ||
+      withdrawnApprovalReference(c, offers),
   );
   const records = cases;
   const rows = records
@@ -496,10 +502,12 @@ function Queue({
           (filter === "active"
             ? ["needs_intake", "in_review"].includes(c.status) ||
               pendingResponses(c).length > 0 ||
+              !!withdrawnApprovalReference(c, offers) ||
               !!pendingDecisionHandoff(c)
             : filter === "completed"
               ? isClosed(c) &&
                 !pendingDecisionHandoff(c) &&
+                !withdrawnApprovalReference(c, offers) &&
                 !pendingResponses(c).length
               : c.status === filter)) &&
         (owner === "all" || c.owner === owner) &&
@@ -684,17 +692,19 @@ function Queue({
                       <span className="next-action">
                         {pendingResponses(c).length
                           ? `${pendingResponses(c).length} response${pendingResponses(c).length === 1 ? "" : "s"} to assess`
-                          : pendingDecisionHandoff(c)
-                            ? "Communicate recorded decision"
-                            : isClosed(c)
-                              ? "Decision recorded"
-                              : c.status === "needs_intake"
-                                ? "Confirm submitted package"
-                                : c.status === "waiting"
-                                  ? c.waitingReason
-                                  : openBlockers(c).length
-                                    ? `${openBlockers(c).length} findings to address`
-                                    : "Review current package"}
+                          : withdrawnApprovalReference(c, offers)
+                            ? "Review withdrawn approval reference"
+                            : pendingDecisionHandoff(c)
+                              ? "Communicate recorded decision"
+                              : isClosed(c)
+                                ? "Decision recorded"
+                                : c.status === "needs_intake"
+                                  ? "Confirm submitted package"
+                                  : c.status === "waiting"
+                                    ? c.waitingReason
+                                    : openBlockers(c).length
+                                      ? `${openBlockers(c).length} findings to address`
+                                      : "Review current package"}
                       </span>
                       <span className="table-sub">
                         {[
@@ -909,9 +919,19 @@ function DecisionRecord({
   );
 }
 
-function Samples({ cases, onClose }: { cases: ReviewCase[]; onClose: () => void }) {
+function Samples({
+  cases,
+  onClose,
+}: {
+  cases: ReviewCase[];
+  onClose: () => void;
+}) {
   const prepared = cases
-    .filter((review) => review.notes.some((note) => note.text.startsWith("Sample scenario prepared:")))
+    .filter((review) =>
+      review.notes.some((note) =>
+        note.text.startsWith("Sample scenario prepared:"),
+      ),
+    )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const links = [
     [
@@ -964,7 +984,10 @@ function Samples({ cases, onClose }: { cases: ReviewCase[]; onClose: () => void 
               {prepared.map((review) => (
                 <article key={review.id} aria-label={review.title}>
                   <strong>{review.title}</strong>
-                  <small>{review.reference} · Version {currentRevision(review).number}</small>
+                  <small>
+                    {review.reference} · Version{" "}
+                    {currentRevision(review).number}
+                  </small>
                   <div>
                     <a href={`#review/${review.id}`} onClick={onClose}>
                       Review case <ArrowRight size={14} />
@@ -1061,8 +1084,8 @@ function Guide({ onClose }: { onClose: () => void }) {
           <p>
             Compare the updated material with the previous version. Resolve
             addressed findings and leave unanswered requests open. Inspect
-            returned evidence before assessing the response; a reply alone
-            does not resolve a finding.
+            returned evidence before assessing the response; a reply alone does
+            not resolve a finding.
           </p>
         </div>
         <div>
@@ -1071,8 +1094,8 @@ function Guide({ onClose }: { onClose: () => void }) {
           <p>
             State the reviewed version, permitted use, and basis. Share the
             decision on the submission link, or record communication of its
-            exact saved message outside this workspace. Saving a draft does
-            not complete that handoff.
+            exact saved message outside this workspace. Saving a draft does not
+            complete that handoff.
           </p>
         </div>
       </div>
