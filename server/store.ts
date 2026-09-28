@@ -5,7 +5,8 @@ import { basename, join, resolve } from 'node:path';
 import { REVIEWER, currentRevision, openBlockers } from '../shared/types.ts';
 import type { Asset, CaseAction, Offer, PackageRevision, ReviewCase, RevisionInput, SubmissionInput } from '../shared/types.ts';
 
-import { listReferences } from './references.ts';
+import { applyHandoff, validateFinding } from './handoffs.ts';
+import { participant, listReferences } from './references.ts';
 
 export class WorkflowError extends Error {
   constructor(public status: number, message: string, public code = 'invalid_request', public currentVersion?: number) { super(message); }
@@ -63,7 +64,7 @@ export class WorkflowStore {
             revision.contextInherited = true;
           });
           c.findings.forEach(finding => { finding.audience ??= 'internal'; });
-          c.publishedFeedback ??= []; c.publishedResults ??= []; c.responses ??= []; c.communications ??= []; c.submitterAssetIds ??= [];
+          c.publishedFeedback ??= []; c.publishedResults ??= []; c.responses ??= []; c.communications ??= []; c.submitterAssetIds ??= []; c.submitterRevisionIds ??= [];
           this.db.prepare('UPDATE cases SET data=? WHERE id=?').run(JSON.stringify(c), c.id);
         }
         this.db.exec('PRAGMA user_version=2');
@@ -107,6 +108,11 @@ export class WorkflowStore {
   private validateOffer(offerId: string, product: ReviewCase['product'], required = false) {
     if (!offerId && !required) return;
     if (!this.offers.some(offer => offer.id === offerId && offer.product === product)) throw new WorkflowError(400, 'Choose an offer that matches this product.', 'offer_required');
+  }
+  private validateApplicability(offerId: string, launchDate: string, reason: string) {
+    const offer = this.offers.find(item => item.id === offerId);
+    if (offer?.withdrawnAt) throw new WorkflowError(400, 'The selected reference was withdrawn. Select a replacement reference.', 'reference_withdrawn');
+    if (offer && launchDate && (launchDate < offer.validFrom || launchDate > offer.validTo) && !reason.trim()) throw new WorkflowError(400, 'The target launch is outside this reference’s recorded dates. Select a current reference or record why it applies.', 'reference_date_conflict');
   }
   private validatePackage(input: RevisionInput | SubmissionInput, files: Upload[], retained: PackageRevision['components'] = []) {
     if (files.length !== input.fileRoles.length) throw new WorkflowError(400, 'Provide one role for each uploaded attachment.');
@@ -163,7 +169,7 @@ export class WorkflowStore {
         createdAt: at, updatedAt: at, example: false, confirmedRevisionId: null,
         assets, revisions: [revision], findings: [], notes: [], decisions: [], drafts: [], history: [],
         publishedFeedback: [], publishedResults: [], responses: [], communications: [],
-        submitterAssetIds: external ? assets.map(asset => asset.id) : [],
+        submitterAssetIds: external ? assets.map(asset => asset.id) : [], submitterRevisionIds: external ? [revision.id] : [],
         ...(external ? { submitterToken: randomBytes(24).toString('base64url') } : {}),
       };
       this.event(c, 'submitted', 'Submission received. Awaiting intake.', input.submittedBy);
@@ -213,12 +219,12 @@ export class WorkflowStore {
         if (contextChanged || creativeChanged || !baselineRetained) finding.needsRecheck = true;
       });
       c.assets.push(...assets);
-      if (external) c.submitterAssetIds = [...(c.submitterAssetIds || []), ...assets.map(asset => asset.id)];
+      if (external) { c.submitterAssetIds = [...(c.submitterAssetIds || []), ...assets.map(asset => asset.id)]; c.submitterRevisionIds = [...(c.submitterRevisionIds || []), revision.id]; }
       c.product = revision.product!; c.channel = revision.channel!; c.launchDate = revision.launchDate!;
       c.revisions.push(revision);
       c.confirmedRevisionId = null;
       c.status = 'needs_intake';
-      c.nextOwner = REVIEWER;
+      c.nextOwner = c.owner;
       c.waitingReason = '';
       this.event(c, 'revision', `Revision ${revision.number} received. Earlier decisions remain historical; intake is required.`, input.submittedBy);
       return this.save(c, input.expectedVersion);
@@ -229,20 +235,26 @@ export class WorkflowStore {
       const c = this.get(caseId);
       this.version(c, action.expectedVersion);
       const revision = currentRevision(c);
-      if (['approved', 'rejected'].includes(c.status) && !['add_note', 'save_draft'].includes(action.type)) throw new WorkflowError(409, 'This revision has a final decision. Submit a new revision to resume review.', 'decision_closed');
+      const actor = participant(action.actorId);
+      if (['approved', 'rejected', 'cancelled'].includes(c.status) && !['add_note', 'save_draft', 'assign_owner', 'correct_contact', 'create_submitter_link', 'rotate_submitter_link', 'publish_result', 'record_communication', 'withdraw_approval', 'cancel', 'add_response'].includes(action.type)) throw new WorkflowError(409, 'This revision has a final decision. Submit a new revision to resume review.', 'decision_closed');
+      const event = (type: string, text: string) => this.event(c, type, text, actor.name);
+      if (applyHandoff(c, action, actor.name, this.offers, event)) return this.save(c, action.expectedVersion);
       switch (action.type) {
         case 'confirm_intake':
+          if (action.offerId !== undefined && action.offerId !== revision.offerId && c.decisions.some(decision => decision.revisionId === revision.id)) throw new WorkflowError(409, 'Submit a new revision before changing the reference for a previously decided package.');
+          if (action.offerId !== undefined) revision.offerId = action.offerId;
+          if (action.applicabilityReason !== undefined) revision.applicabilityReason = action.applicabilityReason;
           this.validateOffer(revision.offerId, c.product, true);
+          this.validateApplicability(revision.offerId, c.launchDate, revision.applicabilityReason || '');
           if (!revision.intendedUse.trim()) throw new WorkflowError(400, 'Describe the intended use before confirming intake.');
-          c.confirmedRevisionId = revision.id; c.status = 'in_review'; c.nextOwner = REVIEWER; c.waitingReason = '';
-          this.event(c, 'intake_confirmed', `Intake confirmed for revision ${revision.number}.`);
+          c.confirmedRevisionId = revision.id; c.status = 'in_review'; c.nextOwner = c.owner; c.waitingReason = '';
+          event('intake_confirmed', `Intake confirmed for revision ${revision.number}.`);
           break;
         case 'add_finding': {
-          if (!action.finding.detail.trim()) throw new WorkflowError(400, 'Record the basis for this finding.');
-          if (action.finding.assetId && !revision.components.some(component => component.assetId === action.finding.assetId && component.role !== 'excluded')) throw new WorkflowError(400, 'Choose an attachment in the current review package.');
-          const finding = { ...action.finding, id: id(), number: Math.max(0, ...c.findings.map(f => f.number)) + 1, status: 'open' as const, createdAt: now(), createdBy: REVIEWER, revisionId: revision.id, needsRecheck: false };
+          validateFinding(c, action.finding, this.offers);
+          const finding = { ...action.finding, audience: action.finding.audience || 'internal' as const, id: id(), number: Math.max(0, ...c.findings.map(f => f.number)) + 1, status: 'open' as const, createdAt: now(), createdBy: actor.name, revisionId: revision.id, needsRecheck: false };
           c.findings.push(finding);
-          this.event(c, 'finding_added', `Finding ${finding.number}: ${finding.title}`);
+          event('finding_added', `Finding ${finding.number}: ${finding.title}`);
           break;
         }
         case 'disposition': {
@@ -250,38 +262,50 @@ export class WorkflowStore {
           const finding = c.findings.find(f => f.id === action.findingId);
           if (!finding) throw new WorkflowError(404, 'This finding was not found.', 'not_found');
           finding.status = action.status; finding.needsRecheck = false;
-          finding.disposition = { reason: action.reason, at: now(), by: REVIEWER, revisionId: revision.id };
-          this.event(c, `finding_${action.status}`, `Finding ${finding.number} ${action.status}: ${action.reason}`);
+          finding.disposition = { reason: action.reason, at: now(), by: actor.name, revisionId: revision.id };
+          event(`finding_${action.status}`, `Finding ${finding.number} ${action.status}: ${action.reason}`);
           break;
         }
         case 'set_waiting':
           c.status = 'waiting'; c.nextOwner = action.nextOwner; c.waitingReason = action.reason;
-          this.event(c, 'waiting', `Waiting on ${action.nextOwner}: ${action.reason}`);
+          event('waiting', `Waiting on ${action.nextOwner}: ${action.reason}`);
           break;
         case 'resume':
-          c.status = c.confirmedRevisionId === revision.id ? 'in_review' : 'needs_intake'; c.nextOwner = REVIEWER; c.waitingReason = '';
-          this.event(c, 'resumed', 'Review resumed.');
+          c.status = c.confirmedRevisionId === revision.id ? 'in_review' : 'needs_intake'; c.nextOwner = c.owner; c.waitingReason = '';
+          event('resumed', 'Review resumed.');
           break;
         case 'add_note':
-          c.notes.push({ id: id(), text: action.text, author: REVIEWER, createdAt: now() });
-          this.event(c, 'note', 'An internal note was added.');
+          c.notes.push({ id: id(), text: action.text, author: actor.name, createdAt: now() });
+          event('note', 'An internal note was added.');
           break;
         case 'decide': {
+          if (actor.role !== 'reviewer') throw new WorkflowError(400, 'Select a reviewer to record a decision.');
           if (!action.rationale.trim()) throw new WorkflowError(400, 'Record the rationale for this decision.');
           if (action.outcome === 'approved') {
+            this.validateApplicability(revision.offerId, c.launchDate, revision.applicabilityReason || '');
             if (c.confirmedRevisionId !== revision.id || !action.reviewed || !action.scope.trim()) throw new WorkflowError(400, 'Approval requires confirmed intake, completed review, and a decision scope.', 'approval_requirements');
             if (openBlockers(c).length) throw new WorkflowError(409, 'Material findings still need resolution or recheck.', 'unresolved_findings');
           } else if (!action.rationale.trim()) throw new WorkflowError(400, 'Provide a reason for rejecting this revision.');
           const offer = this.offers.find(item => item.id === revision.offerId);
-          c.decisions.push({ id: id(), outcome: action.outcome, reviewer: REVIEWER, revisionId: revision.id, offerId: revision.offerId, scope: action.scope, rationale: action.rationale, createdAt: now(), findingSnapshot: structuredClone(c.findings), ...(offer ? { offerSnapshot: structuredClone(offer) } : {}) });
+          c.decisions.push({ id: id(), outcome: action.outcome, reviewer: actor.name, revisionId: revision.id, offerId: revision.offerId, scope: action.scope, rationale: action.rationale, createdAt: now(), findingSnapshot: structuredClone(c.findings), ...(offer ? { offerSnapshot: structuredClone(offer) } : {}) });
           c.status = action.outcome; c.nextOwner = ''; c.waitingReason = '';
-          this.event(c, action.outcome, `${action.outcome === 'approved' ? 'Approved' : 'Rejected'} revision ${revision.number}. ${action.scope}`);
+          event(action.outcome, `${action.outcome === 'approved' ? 'Approved' : 'Rejected'} revision ${revision.number}. ${action.scope}`);
           break;
         }
-        case 'save_draft':
-          c.drafts.push({ id: id(), subject: action.subject, body: action.body, createdAt: now(), revisionId: revision.id, status: 'prepared' });
-          this.event(c, 'draft_prepared', 'Reply draft prepared. Nothing was sent.');
+        case 'save_draft': {
+          if (action.findingIds?.some(findingId => !c.findings.some(finding => finding.id === findingId))) throw new WorkflowError(400, 'Select findings from this case.');
+          const existing = action.draftId ? c.drafts.find(draft => draft.id === action.draftId) : undefined;
+          if (action.draftId && !existing) throw new WorkflowError(404, 'This draft was not found.');
+          if (existing && existing.revisionId !== revision.id) throw new WorkflowError(409, 'This draft belongs to an earlier revision. Create a new draft before reusing it.');
+          if (existing) {
+            existing.previousVersions ??= [];
+            existing.previousVersions.push({ version: existing.version || 1, subject: existing.subject, body: existing.body, at: existing.updatedAt || existing.createdAt });
+            existing.subject = action.subject; existing.body = action.body; existing.findingIds = action.findingIds || [];
+            existing.version = (existing.version || 1) + 1; existing.updatedAt = now();
+          } else c.drafts.push({ id: id(), subject: action.subject, body: action.body, createdAt: now(), revisionId: revision.id, status: 'prepared', version: 1, findingIds: action.findingIds || [] });
+          event('draft_prepared', existing ? 'Reply draft updated. Nothing was sent.' : 'Reply draft prepared. Nothing was sent.');
           break;
+        }
       }
       return this.save(c, action.expectedVersion);
     });

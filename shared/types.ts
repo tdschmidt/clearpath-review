@@ -184,6 +184,7 @@ export interface ReviewCase {
   history: HistoryEvent[];
   submitterToken?: string;
   submitterAssetIds?: string[];
+  submitterRevisionIds?: string[];
   publishedFeedback?: PublishedFeedback[];
   publishedResults?: PublishedResult[];
   responses?: SubmissionResponse[];

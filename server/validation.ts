@@ -31,21 +31,34 @@ export const revisionSchema = z.object({
   retainedComponents: z.array(z.object({ assetId: required(120), role }).strict()).max(100),
   expectedVersion: z.number().int().positive(),
 }).strict();
+const materialCitation = z.object({ revisionId: required(120), assetId: required(120), page: z.number().int().min(1).max(10000).optional(), note: text(1000).optional() }).strict();
+const sourceCitation = z.object({ offerId: required(120), assetId: required(120), page: z.number().int().min(1).max(10000).optional(), note: text(1000).optional() }).strict();
 const finding = z.object({
   kind: z.enum(['correction', 'evidence', 'question']), title: required(200),
   detail: required(5000), request: required(3000), location: text(300), assetId: text(120),
-  owner: required(120), material: z.boolean(),
+  owner: required(120), material: z.boolean(), audience: z.enum(['internal', 'submitter']).optional(), citations: z.array(materialCitation).max(20).optional(), sourceCitations: z.array(sourceCitation).max(20).optional(),
 }).strict();
-const version = { expectedVersion: z.number().int().positive() };
+const version = { expectedVersion: z.number().int().positive(), actorId: text(120).optional() };
 export const actionSchema = z.discriminatedUnion('type', [
-  z.object({ ...version, type: z.literal('confirm_intake') }).strict(),
+  z.object({ ...version, type: z.literal('confirm_intake'), offerId: text(120).optional(), applicabilityReason: text(3000).optional() }).strict(),
   z.object({ ...version, type: z.literal('add_finding'), finding }).strict(),
   z.object({ ...version, type: z.literal('disposition'), findingId: required(120), status: z.enum(['open', 'resolved', 'dismissed']), reason: required(3000) }).strict(),
   z.object({ ...version, type: z.literal('set_waiting'), nextOwner: required(120), reason: required(2000) }).strict(),
   z.object({ ...version, type: z.literal('resume') }).strict(),
   z.object({ ...version, type: z.literal('add_note'), text: required(5000) }).strict(),
   z.object({ ...version, type: z.literal('decide'), outcome: z.enum(['approved', 'rejected']), scope: text(3000), rationale: required(5000), reviewed: z.boolean() }).strict(),
-  z.object({ ...version, type: z.literal('save_draft'), subject: required(300), body: required(20000) }).strict(),
+  z.object({ ...version, type: z.literal('save_draft'), subject: required(300), body: required(20000), draftId: text(120).optional(), findingIds: z.array(required(120)).max(100).optional() }).strict(),
+  z.object({ ...version, type: z.literal('edit_finding'), findingId: required(120), finding }).strict(),
+  z.object({ ...version, type: z.literal('assign_owner'), ownerId: required(120) }).strict(),
+  z.object({ ...version, type: z.literal('correct_contact'), title: required(200), submitter: required(120), submitterEmail: z.union([z.email().max(254), z.literal('')]), reason: required(3000) }).strict(),
+  z.object({ ...version, type: z.literal('create_submitter_link') }).strict(),
+  z.object({ ...version, type: z.literal('rotate_submitter_link') }).strict(),
+  z.object({ ...version, type: z.literal('publish_feedback'), findingIds: z.array(required(120)).max(100), subject: required(300), body: required(20000) }).strict(),
+  z.object({ ...version, type: z.literal('publish_result'), decisionId: required(120), message: required(20000) }).strict(),
+  z.object({ ...version, type: z.literal('record_communication'), messageId: required(120), messageVersion: z.number().int().positive(), recipient: required(300), occurredAt: z.iso.datetime({ offset: true }), channel: required(120), note: text(3000) }).strict(),
+  z.object({ ...version, type: z.literal('add_response'), text: required(5000), findingIds: z.array(required(120)).max(100) }).strict(),
+  z.object({ ...version, type: z.literal('withdraw_approval'), decisionId: required(120), reason: required(3000) }).strict(),
+  z.object({ ...version, type: z.literal('cancel'), reason: required(3000) }).strict(),
 ]);
 
 export const offerSchema = z.object({
