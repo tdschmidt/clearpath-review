@@ -114,12 +114,12 @@ const card: ReviewCase = {
   revisions: [{
     id: 'card-r1', number: 1, createdAt: cardAt, submittedBy: 'Alex Rivera',
     summary: 'Brand-awareness social image for the Everyday credit card. No application or linked destination in this scope.',
-    offerId: offers[1].id, intendedUse: 'One static brand-awareness post on ClearPath’s own social account. No application CTA, pricing claim, rewards claim, or destination is included.',
+    offerId: offers[1].id, intendedUse: 'One static brand-awareness post on ClearPath’s own social account. The image includes a no-annual-fee claim. No application CTA, rewards claim, or destination is included. The reviewer must assess applicable advertising disclosures.',
     copy: 'Meet ClearPath Everyday. Simple by design. No annual fee. Credit approval required.', destinationUrl: '',
     components: [{ assetId: 'card-ad', role: 'creative' }, { assetId: 'card-offer', role: 'evidence' }],
   }],
   findings: [],
-  notes: [{ id: 'card-n1', text: 'Sample review: the “No annual fee” statement agrees with CC-2026.09 / v2. Scope is the supplied brand-awareness image and caption only. Decision pending.', author: reviewer, createdAt: '2026-09-27T15:15:00.000Z' }],
+  notes: [{ id: 'card-n1', text: 'Sample review: the “No annual fee” statement agrees with CC-2026.09 / v2. That match alone does not complete advertising review. Assess applicable fee-advertising disclosures for this image and caption before deciding. Decision pending.', author: reviewer, createdAt: '2026-09-27T15:15:00.000Z' }],
   decisions: [], drafts: [],
   history: [
     { id: 'card-h1', type: 'submitted', text: 'Brand-awareness image and supporting offer reference submitted.', actor: 'Alex Rivera', createdAt: cardAt, revisionId: 'card-r1' },
