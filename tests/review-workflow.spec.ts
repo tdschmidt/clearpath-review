@@ -32,7 +32,11 @@ async function createSubmission(
     .selectOption(options.product || "personal_loan");
   await form
     .getByRole("combobox", { name: /^Offer reference/ })
-    .selectOption({ index: 1 });
+    .selectOption({
+      personal_loan: "offer-personal-loan-v3",
+      credit_card: "offer-credit-card-v2",
+      mortgage: "offer-mortgage-v1",
+    }[options.product || "personal_loan"]);
   await form
     .getByLabel("Intended use")
     .fill(

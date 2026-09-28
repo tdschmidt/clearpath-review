@@ -111,7 +111,7 @@ test("all shared requests remain actionable across feedback batches, and only ex
   const offers: Offer[] = await (await page.request.get("/api/offers")).json();
   review = await internalAction(page.request, review.id, {
     type: "confirm_intake",
-    offerId: offers.find((offer) => offer.product === "personal_loan")!.id,
+    offerId: offers.find((offer) => offer.product === "personal_loan" && !offer.withdrawnAt)!.id,
   });
   const initial = receipt.submission.revisions[0];
   const add = async (title: string, material = true) => {
@@ -361,7 +361,7 @@ test("an external submitter returns to shared feedback, supplies real revisions,
     (c) => c.reference === receipt.submission.reference,
   )!;
   const offers: Offer[] = await (await page.request.get("/api/offers")).json();
-  const offer = offers.find((o) => o.product === "personal_loan")!;
+  const offer = offers.find((o) => o.product === "personal_loan" && !o.withdrawnAt)!;
   await internalAction(page.request, review.id, {
     type: "confirm_intake",
     offerId: offer.id,

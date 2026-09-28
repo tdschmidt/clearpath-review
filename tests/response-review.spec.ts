@@ -56,10 +56,17 @@ async function browserAction(
   return (await response.json()) as ReviewCase;
 }
 
-async function createReview(request: APIRequestContext, title: string) {
+async function createReview(
+  request: APIRequestContext,
+  title: string,
+  offerId?: string,
+) {
   const offers: Offer[] = await (await request.get("/api/offers")).json();
   const offer = offers.find(
-    (item) => item.product === "personal_loan" && !item.withdrawnAt,
+    (item) =>
+      item.product === "personal_loan" &&
+      !item.withdrawnAt &&
+      (!offerId || item.id === offerId),
   )!;
   const response = await request.post("/api/submissions", {
     multipart: {
@@ -97,6 +104,134 @@ async function createReview(request: APIRequestContext, title: string) {
   });
   return { review, token: receipt.token };
 }
+
+test("a reference withdrawn while an approval reply is open requires explicit reconsideration", async ({
+  page,
+}) => {
+  const createdOffer = await page.request.post("/api/offers", {
+    multipart: {
+      payload: JSON.stringify({
+        product: "personal_loan",
+        name: "Sharing withdrawal regression",
+        version: "v1",
+        validFrom: "2026-09-01",
+        validTo: "2026-11-30",
+        source: "Fictional offer team",
+        disclosure: "",
+        facts: [{ label: "Fee", value: "5%", sourceFileIndex: 0, page: 1 }],
+      }),
+      files: {
+        name: "reference.pdf",
+        mimeType: "application/pdf",
+        buffer: readFileSync(fixture("offers/personal-loan.pdf")),
+      },
+    },
+  });
+  expect(createdOffer.status()).toBe(201);
+  const offer: Offer = await createdOffer.json();
+  const { review, token } = await createReview(
+    page.request,
+    "Approval reference withdrawn while preparing reply",
+    offer.id,
+  );
+  const approved = await internalAction(page.request, review.id, {
+    type: "decide",
+    outcome: "approved",
+    scope: "This exact paid-social package.",
+    rationale: "Fictional reviewer has inspected this package.",
+    reviewed: true,
+  });
+  const decision = approved.decisions.at(-1)!;
+  await page.goto(`/#review/${review.id}`);
+  await page
+    .getByRole("button", { name: "Prepare decision message", exact: true })
+    .click();
+  const reply = page.getByRole("dialog", {
+    name: "Prepare a reply",
+    exact: true,
+  });
+  const message =
+    "Approval applies only to the recorded version and placement.";
+  await reply.getByRole("textbox", { name: "Message", exact: true }).fill(message);
+  const withdrawn = await page.request.post(
+    `/api/offers/${offer.id}/withdraw`,
+    { data: { reason: "Offer applicability needs review." } },
+  );
+  expect(withdrawn.ok()).toBeTruthy();
+  const blocked = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/cases/${review.id}/actions`) &&
+      response.status() === 409,
+  );
+  const share = reply.getByRole("button", {
+    name: "Share decision on submission link",
+    exact: true,
+  });
+  await share.click();
+  await blocked;
+  await expect(
+    reply.getByRole("region", { name: "Withdrawn approval reference" }),
+  ).toBeVisible();
+  await expect(
+    reply.getByText("Offer applicability needs review.", { exact: true }),
+  ).toBeVisible();
+  await expect(reply.getByRole("textbox", { name: "Message", exact: true })).toHaveValue(
+    message,
+  );
+  await expect(share).toBeDisabled();
+  const unchanged = await getReview(page.request, review.id);
+  expect(unchanged.publishedResults || []).toEqual([]);
+  expect(unchanged.decisions.at(-1)).toEqual(decision);
+  const reason =
+    "The offer owner confirmed the withdrawal does not affect this placement.";
+  await reply
+    .getByLabel("Why this approval still applies", { exact: false })
+    .fill(reason);
+  await expect(share).toBeDisabled();
+  await reply
+    .getByRole("checkbox", { name: /^I reviewed this withdrawal/ })
+    .check();
+  const shared = await browserAction(page, review.id, () => share.click());
+  expect(
+    shared.history.some(
+      (event) =>
+        event.type === "approval_reference_rechecked" &&
+        event.text.includes(reason),
+    ),
+  ).toBeTruthy();
+  expect(shared.decisions.at(-1)).toEqual(decision);
+  const external = await (
+    await page.request.get(`/api/submissions/${token}`)
+  ).json();
+  expect(external.status).toBe("approved");
+  expect(JSON.stringify(external)).not.toContain(reason);
+  expect(JSON.stringify(external)).not.toContain(
+    "Offer applicability needs review.",
+  );
+  // Reopening does not reuse permission from a previous sharing action.
+  await page
+    .getByRole("tab", { name: "Feedback & replies", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Prepare reply", exact: true })
+    .click();
+  await expect(
+    reply.getByRole("button", {
+      name: "Share decision on submission link",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await reply
+    .getByRole("button", { name: "Open decision record", exact: true })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`/decision/${decision.id}$`));
+  await expect(
+    page.getByRole("heading", {
+      name: "Approved for the stated use",
+      exact: true,
+    }),
+  ).toBeVisible();
+});
 
 test("returned evidence brings a waiting case back to review and resolves only the assessed request", async ({
   page,

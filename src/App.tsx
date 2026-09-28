@@ -215,6 +215,13 @@ export default function App() {
     } catch (error) {
       if (
         error instanceof ApiError &&
+        error.details?.code === "reference_recheck_required"
+      ) {
+        // A reference can change without changing the case version.
+        setOffers(await api<Offer[]>("/api/offers"));
+      }
+      if (
+        error instanceof ApiError &&
         error.status === 409 &&
         error.details?.code === "version_conflict"
       ) {
@@ -494,6 +501,7 @@ export default function App() {
               }
               reviewerName={actor.name}
               review={selected}
+              offers={offers}
               onAction={action}
               onClose={() => setDialog(null)}
             />

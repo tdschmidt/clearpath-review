@@ -22,7 +22,7 @@ import {
 import { api, ApiError, multipart } from "./api";
 import { clearDrafts, useDraftState } from "./drafts";
 import { usePackageDraft, type DraftChoice } from "./submitter-drafts";
-import { bytes, ErrorMessage, Modal } from "./components";
+import { bytes, dateTime, ErrorMessage, Modal } from "./components";
 import {
   currentRevision,
   assetUrl,
@@ -1316,16 +1316,35 @@ function draftText(
 }
 export function DraftForm({
   review,
+  offers,
   onAction,
   onClose,
   reviewerName = REVIEWER,
   draftId,
-}: ActionProps & { draftId?: string }) {
+}: ActionProps & { draftId?: string; offers: Offer[] }) {
   const rev = currentRevision(review);
   const existing = review.drafts.find((d) => d.id === draftId);
   const decision = review.decisions.findLast(
     (d) => d.revisionId === rev.id && !d.withdrawn,
   );
+  const withdrawnReference =
+    decision?.outcome === "approved"
+      ? offers.find(
+          (offer) => offer.id === decision.offerId && offer.withdrawnAt,
+        )
+      : undefined;
+  const referenceKey = `${decision?.id || ""}/${withdrawnReference?.id || ""}/${withdrawnReference?.withdrawnAt || ""}`;
+  const [referenceReview, setReferenceReview] = useState({
+    key: "",
+    reason: "",
+    confirmed: false,
+  });
+  const referenceReason =
+    referenceReview.key === referenceKey ? referenceReview.reason : "";
+  const referenceConfirmed =
+    referenceReview.key === referenceKey && referenceReview.confirmed;
+  const referenceReady =
+    !withdrawnReference || (referenceConfirmed && !!referenceReason.trim());
   const historical =
     !!existing &&
     (existing.revisionId !== rev.id ||
@@ -1387,6 +1406,12 @@ export function DraftForm({
     if (contextChanged) {
       setError(
         "The package or decision changed. Review and confirm the message against the current context before saving or sharing.",
+      );
+      return;
+    }
+    if (action.type === "publish_result" && !referenceReady) {
+      setError(
+        "Review the withdrawn reference and record why this approval still applies before sharing it.",
       );
       return;
     }
@@ -1473,6 +1498,73 @@ export function DraftForm({
                 I checked the message against the current context
               </button>
             </div>
+          )}
+          {withdrawnReference && decision && (
+            <section
+              className="rw-warning"
+              aria-label="Withdrawn approval reference"
+            >
+              <strong>
+                The reference supporting this approval was withdrawn
+              </strong>
+              <p>
+                {withdrawnReference.name} · {withdrawnReference.version} ·
+                withdrawn {dateTime(withdrawnReference.withdrawnAt!)}
+              </p>
+              <p>
+                {withdrawnReference.withdrawalReason ||
+                  "No withdrawal reason recorded."}
+              </p>
+              <p>
+                The recorded decision has not changed. Review the withdrawal
+                before using this approval. If it no longer applies, withdraw
+                the approval from its decision record.
+              </p>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => {
+                  onClose();
+                  window.location.hash = `review/${review.id}/decision/${decision.id}`;
+                }}
+              >
+                Open decision record
+              </button>
+              <Field
+                label="Why this approval still applies"
+                hint="Internal record only. This explanation will not be shared with the submitter."
+              >
+                <textarea
+                  rows={3}
+                  maxLength={3000}
+                  value={referenceReason}
+                  onChange={(e) =>
+                    setReferenceReview({
+                      key: referenceKey,
+                      reason: e.target.value,
+                      confirmed: referenceConfirmed,
+                    })
+                  }
+                />
+              </Field>
+              <label className="check-line">
+                <input
+                  type="checkbox"
+                  checked={referenceConfirmed}
+                  onChange={(e) =>
+                    setReferenceReview({
+                      key: referenceKey,
+                      reason: referenceReason,
+                      confirmed: e.target.checked,
+                    })
+                  }
+                />
+                <span>
+                  I reviewed this withdrawal and confirm the approval still
+                  applies to its recorded scope.
+                </span>
+              </label>
+            </section>
           )}
           {pending.length > 0 && (
             <details className="draft-select" open>
@@ -1610,12 +1702,21 @@ export function DraftForm({
                 <button
                   type="button"
                   className="button secondary"
-                  disabled={busy || !reconciled}
+                  disabled={busy || !reconciled || !referenceReady}
                   onClick={() =>
                     void run({
                       type: "publish_result",
                       decisionId: decision.id,
                       message: body,
+                      ...(withdrawnReference
+                        ? {
+                            referenceRecheck: {
+                              offerId: withdrawnReference.id,
+                              withdrawnAt: withdrawnReference.withdrawnAt!,
+                              reason: referenceReason,
+                            },
+                          }
+                        : {}),
                     })
                   }
                 >
