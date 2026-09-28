@@ -425,22 +425,18 @@ test("a real visual package keeps partial findings, private notes, and exact-ver
       { exact: true },
     ),
   ).toBeVisible();
-  const earlierPanel = page
-    .locator(".rw-compare-grid > section")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Earlier · version 1",
-        exact: true,
-      }),
-    });
-  const currentPanel = page
-    .locator(".rw-compare-grid > section")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "Current · version 2",
-        exact: true,
-      }),
-    });
+  const earlierPanel = page.locator(".rw-compare-grid > section").filter({
+    has: page.getByRole("heading", {
+      name: "Earlier · version 1",
+      exact: true,
+    }),
+  });
+  const currentPanel = page.locator(".rw-compare-grid > section").filter({
+    has: page.getByRole("heading", {
+      name: "Current · version 2",
+      exact: true,
+    }),
+  });
   await expect(
     earlierPanel.getByText(`${offer.name} · ${offer.version}`, { exact: true }),
   ).toBeVisible();
@@ -585,6 +581,8 @@ test("a finding preserves its exact PDF page and source while the reviewer edits
   const saved = await action(page, () =>
     editor.getByRole("button", { name: "Add finding", exact: true }).click(),
   );
+  expect(saved.findings[0].owner).toBe(initial.owner);
+  expect(saved.findings[0].audience).toBe("internal");
   expect(saved.findings[0].citations?.[0]).toMatchObject({
     revisionId: current(initial).id,
     page: 2,
@@ -615,4 +613,11 @@ test("a finding preserves its exact PDF page and source while the reviewer edits
   await expect(page.locator(".rw-material .pdf-text-layer")).toContainText(
     "Before you borrow",
   );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".rw-material")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBeTruthy();
 });

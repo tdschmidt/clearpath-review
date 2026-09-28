@@ -1090,7 +1090,7 @@ function FindingEditor({
         request: "",
         location: "",
         assetId: location.assetId,
-        owner: review.submitter,
+        owner: review.owner,
         material: true,
         audience: "internal",
         citations: location.assetId

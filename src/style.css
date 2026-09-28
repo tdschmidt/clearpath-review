@@ -2943,3 +2943,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .case-open main { padding: 0; }
 .reviewer select, .topbar-actor select { max-width: 185px; border: 1px solid #d5ded8; border-radius: 4px; padding: 6px; background: white; font-size: 12px; }
 .topbar-actor { font-size: 12px; display: flex; align-items: center; gap: 8px; }
+@media (max-width: 760px) {
+  .sidebar { flex-wrap: wrap; gap: 0; }
+  .sidebar .main-nav { width: 100%; margin-left: 0; justify-content: space-between; }
+  .case-open .sidebar { display: none; }
+  .case-open .topbar { height: auto; min-height: 45px; flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+}

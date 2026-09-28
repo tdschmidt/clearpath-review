@@ -272,8 +272,8 @@ export default function SubmitterApp() {
         {!token ? (
           <>
             <div className="partner-page-heading">
-              <p className="eyebrow">BEFORE YOUR CAMPAIGN GOES LIVE</p>
-              <h1>Send your material for review.</h1>
+              <p className="eyebrow">NEW SUBMISSION</p>
+              <h1>Submit material for review</h1>
               <p>
                 Share the creative, the offer you are promoting, and where it
                 will run. The ClearPath team will review the complete package.
