@@ -28,7 +28,7 @@ The final build passed 33 API tests and 19 browser tests. The correction-round t
 
 Visual checks confirmed the withdrawal warning, recovery links, required card finding, and scope prompt. Deployment preserved the other three live cases, all three reference records, and all ten original files. The card received one new finding/history event through its ordinary API, with no retroactive edits.
 
-The [remaining audit](focused-follow-up-findings.md) puts two corrections ahead of new features: require considering unassessed evidence at approval, and detect changed instructions that need to be re-shared. Both repair coordination promises already made by the product. Email integration and broader analysis remain separate directions.
+The [follow-up audit](focused-follow-up-findings.md) put two corrections ahead of new features: require considering unassessed evidence at approval, and detect changed instructions that need to be re-shared. Both are now implemented and tested in the [readiness fixes](submission-readiness.md). Email integration and broader analysis remain separate directions.
 
 ## Remove the participant switcher
 

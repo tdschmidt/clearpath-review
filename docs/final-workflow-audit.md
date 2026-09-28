@@ -2,6 +2,8 @@
 
 September 27, 2026. The core review loop works, but passing tests do not mean every consequential edge case is covered. This audit used a separate temporary database and fictional affiliate material; it did not alter the live demo's cases or send email.
 
+**Follow-up status:** all seven workflow defects below have been corrected. The [readiness record](submission-readiness.md) explains the fixes, two related issues found during follow-up, and verification. Final checks passed the build, 35 API tests, and 23 browser tests. The initial observations below remain as the audit trail.
+
 ## What was tested
 
 The production build, all **33 API tests**, and all **19 browser tests** passed. After the reference-preview correction below, the build and focused reference-version browser test passed again. Existing tests cover original-file preservation, citations, partial revisions, approval gates, private-field exclusion, draft recovery and conflicts, exact decision-message versions, withdrawn-reference recovery, and record export.
@@ -10,9 +12,9 @@ In the in-app browser, I completed a fresh affiliate submission with a real PNG,
 
 **Fixed during the audit:** the reference-library PDF was blank in the in-app browser because it used a native iframe. It now uses the same working document viewer as the review workspace. The updated browser test verifies rendered PDF content, and manual inspection confirmed the document appears beside its facts. This is a source-inspection fix, not an additional compliance feature.
 
-## Remaining workflow defects
+## Defects found in the initial pass — now corrected
 
-These are observed gaps in the existing experience, not production features deliberately excluded from scope.
+These were observed gaps in the existing experience, not production features deliberately excluded from scope. The table preserves the original observations and recommendations; use the follow-up record for current behavior.
 
 | Priority | Finding | Consequence and next correction |
 | --- | --- | --- |
@@ -24,7 +26,7 @@ These are observed gaps in the existing experience, not production features deli
 | Lower | A withdrawn reference still appears like a normal option in the internal submission/revision picker. Existing intake validation prevents its use. | Prevent avoidable selection mistakes while preserving historical references; do not silently choose a replacement. |
 | Lower | The completed-case banner still says “Share the result” after the decision has been shared. Observed on the approved manual case. | Make this banner reflect the recorded handoff, as the queue already does. |
 
-The first two are the strongest next fixes because they affect whether the reviewer and affiliate act on the same, current information. Detailed reproductions and product reasoning are in [Further gaps worth addressing](focused-follow-up-findings.md). They remain unimplemented after this audit.
+The first two were prioritized because they affect whether the reviewer and affiliate act on the same, current information. Detailed reproductions and product reasoning are in [Further gaps worth addressing](focused-follow-up-findings.md). Both are now implemented and regression-tested.
 
 ## Full-product limitations worth discussing
 

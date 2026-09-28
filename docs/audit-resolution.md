@@ -28,7 +28,7 @@ The related interaction changes put the current concern, replacement, and return
 
 The [delivery rundown](delivery-rundown.md) and linked decision records explain each choice. This increment does not implement the audit's V2 proposals: notifications, specialist action lists, context-sensitive intake guidance, reference-change impact review, or email ingestion. Reference withdrawal blocks new approvals. The subsequent [approval-sharing check](approval-sharing-decision.md) also blocks sharing an earlier approval based on a withdrawn reference until current evidence receives a new review and decision; it does not create reassessment tasks for all historical approvals.
 
-The [focused follow-up findings](focused-follow-up-findings.md) record two further reproduced gaps—unassessed evidence at approval and changed required/advisory instructions—plus smaller intake opportunities. They are recommendations, not claims of implemented behavior.
+The [focused follow-up findings](focused-follow-up-findings.md) recorded two further reproduced gaps—unassessed evidence at approval and changed required/advisory instructions—plus smaller intake opportunities. The [readiness fixes](submission-readiness.md) now implement the evidence gates, complete request comparison, and reference-picker correction. Structured promotion duration remains a later direction.
 
 ## Verification to read with the demo
 

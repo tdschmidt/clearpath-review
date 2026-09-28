@@ -1,6 +1,6 @@
 # Further gaps worth addressing
 
-September 27, 2026. Read alongside the [implemented approval-sharing check](approval-sharing-decision.md). The findings below are recommendations, not implemented changes. They follow the assignment's throughput goal and the call's emphasis on completing consequential interactions within a 24-hour project.
+September 27, 2026. Read alongside the [implemented approval-sharing check](approval-sharing-decision.md). This document preserves the original findings and recommendations. **Items 1–3 are now implemented**; see the [readiness decisions](submission-readiness.md) for final behavior and tests. Item 4 remains a later direction. The priorities follow the assignment's throughput goal and the call's emphasis on completing consequential interactions within a 24-hour project.
 
 The first two behaviors were reproduced using fictional records in an isolated database. The source paths identify the relevant implementation. No live review records were changed. Published procedures support the workflow assumptions; they do not establish ClearPath's frequency or measured time savings.
 
@@ -44,4 +44,4 @@ The subsequent [scope refinement](compliance-review-follow-up.md) explicitly pro
 
 ## Recommendation
 
-The unassessed-evidence gap and changed-request communication gap are the strongest next corrections: they close inconsistencies inside the workflow already built. The reference picker is a small companion refinement. Promotion duration can wait unless demonstrating time-limited offers becomes central. Notifications, email ingestion, broad format support, and automatic substantive analysis remain separate directions; this audit does not reopen their implementation scope.
+The unassessed-evidence and changed-request gaps were addressed first because they closed inconsistencies inside the workflow already built. The reference picker followed as a small companion refinement. Structured promotion duration can wait unless demonstrating time-limited offers becomes central. Notifications, email ingestion, broad format support, and automatic substantive analysis remain separate directions; this audit does not reopen their implementation scope.

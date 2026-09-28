@@ -31,4 +31,4 @@ The command defaults to `http://127.0.0.1:3000`; use `DEMO_BASE_URL` for another
 
 A tester should not need to recreate three correction rounds just to inspect a final decision or returned evidence. Prepared stages expose the important interactions while the original files still support a walkthrough from scratch. Putting them in the existing Sample materials dialog keeps demonstration controls out of the everyday review workflow.
 
-Validation covered all six states, their restricted return views, stored-original hashes, the withdrawal sharing gate, and a duplicate run without added cases. Sample setup does not fix the workflow gaps described in the [final audit](final-workflow-audit.md).
+Validation covered all six states, their restricted return views, stored-original hashes, the withdrawal sharing gate, and a duplicate run without added cases. The later [readiness fixes](submission-readiness.md) corrected the workflow defects documented by the [final audit](final-workflow-audit.md), without replacing the live samples.

@@ -20,7 +20,7 @@ Open **Sample materials → Try a prepared case**. Each case has **Review case**
 | Returned evidence | **Northstar · Destination evidence received** → Assess responses | Read the answer and both PDF pages beside the creative. Including this existing attachment in a new package is explicit; receiving it does not resolve the finding. |
 | A decision awaiting communication | **ClearPath · October social handoff** → Prepare decision message | Inspect the saved reply and scope, then deliberately share. Saving a draft alone does not communicate the decision. |
 | A completed review | **Northstar · October campaign approved** → either side | Inspect the shared approval, exact files, scope, accepted requests, and preserved earlier versions. |
-| A source withdrawn after approval | **Northstar · Offer reference withdrawn** → Prepare decision message | Sharing the old approval is blocked. A replacement source and fresh review are required; the earlier decision remains in history. |
+| A source withdrawn after approval | **Northstar · Offer reference withdrawn** → Review with current reference | The queue surfaces the withdrawal. Sharing the old approval is blocked; a replacement source and fresh review are required. |
 | Retrieve the evidence record | Any case → **History & notes → Download internal record** | Download original files, reference documents, revisions, decisions, and handoffs. The ZIP contains internal reasoning; it is not an affiliate reply. |
 
 For the full loop from a blank submission, follow the [walkthrough](docs/demo-walkthrough.md). For rejection, approval withdrawal, source versioning, waiting/ownership, draft recovery, and other paths, use the [flow index](docs/demo-flows.md). [Sample details and repeatable setup](docs/sample-cases.md) explain the prepared stages.
@@ -31,7 +31,7 @@ The ten live cases include six added workflow stages, the original loan/card/mor
 
 The core workflow persists real records and files. PNG/JPEG and multipage PDF previews, citations, revisions, feedback, responses, human dispositions, scoped decisions, and ZIP exports are implemented. Offer references contain manually entered facts with preserved sources. Seeded findings are authored examples, not scanner output.
 
-**Two important workflow defects remain:** a newly arrived response does not currently gate approval, and changing a shared request's required/advisory status can fail to flag it for re-sharing. The [audit](docs/final-workflow-audit.md) describes their reproductions and smaller remaining issues. These are defects, not deliberate product principles.
+The [final audit's workflow defects](docs/final-workflow-audit.md) are corrected: pending responses interrupt approval and approval sharing; changed recipient instructions are flagged for deliberate re-sharing; revision attribution, evidence context, and handoff prompts are consistent. The [readiness decisions](docs/submission-readiness.md) explain each change and its validation. No further submission-blocking defect was found in the final checks; this is a bounded audit, not a guarantee of production readiness.
 
 Email intake and notifications, authentication and partner permissions, automated compliance analysis, OCR/video/live-page capture, campaign expiration/monitoring, and production retention/backup operations are outside this version. Portal sharing is not email delivery. A saved approval is a human decision, not legal certification. No throughput improvement or detection accuracy has been measured.
 
@@ -77,7 +77,7 @@ npm run build
 npm run test:e2e
 ```
 
-The latest full verification passed **33 API tests and 20 browser tests**. Coverage includes actual uploads, file/page citations, partial corrections, stale saves, draft reconciliation, privacy boundaries, exact decision-message versions, source withdrawal recovery, and export contents. The [manual audit](docs/final-workflow-audit.md) records the browser walkthrough and its limits. These checks do not establish legal accuracy, security readiness, or measured time savings.
+The latest full verification passed **35 API tests and 23 browser tests**. Coverage includes actual uploads, file/page citations, partial corrections, stale saves, draft reconciliation, privacy boundaries, exact decision-message versions, late evidence at approval/sharing, changed request obligations, source withdrawal recovery, and export contents. The [manual audit](docs/final-workflow-audit.md) records the browser walkthrough and its limits. These checks do not establish legal accuracy, security readiness, or measured time savings.
 
 Browser tests use an isolated server on port 3101 and temporary data. They use Playwright Chromium, falling back to system Chrome on macOS; otherwise install Chromium with `npx playwright install chromium`. Build first so they exercise the current frontend. Type checking also rejects unused imports, locals, and parameters.
 

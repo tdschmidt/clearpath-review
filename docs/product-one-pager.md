@@ -15,7 +15,7 @@ Reviewers assess a consumer-facing promise against the applicable product terms,
 I chose an approval workspace over a compliance scanner or template library because coordination most directly addresses the stated workflow. The call emphasized getting consequential interactions right within the take-home scope.
 
 - **Keep the review together.** Material, cited sources, findings, and returned evidence can be inspected alongside one another. Original files and versions remain available.
-- **Preserve unresolved work.** Corrections and evidence requests have explicit human dispositions. Required unresolved findings block approval; a partial revision does not clear the case.
+- **Preserve unresolved work.** Required findings and unassessed responses block approval. A partial revision does not clear the case; changed instructions require deliberate re-sharing.
 - **Separate audiences and handoffs.** Affiliates use a submission/return page, not the internal workspace. Reviewers deliberately share instructions and decisions; private reasoning stays out of that external view.
 - **Bound the decision.** Approval identifies a package, reference, and use scope. Changed material requires a new review. A withdrawn supporting reference blocks sharing an earlier approval.
 
@@ -27,9 +27,9 @@ Published partner procedures include campaign context, source files, and email r
 
 ## Evidence, limits, and next decisions
 
-The build, 33 API tests, and 19 browser tests passed, with a manual submission-to-shared-decision walkthrough. Authored samples demonstrate workflow, not automated detection or legal accuracy. No throughput gain has been measured.
+The build, 35 API tests, and 23 browser tests passed, with manual browser checks on both sides. Audit corrections cover late evidence, changed instructions, revision context, and decision handoffs. Authored samples demonstrate workflow, not legal accuracy. No throughput gain has been measured.
 
-Known gaps remain: new responses do not gate approval, and changed request obligations can be missed by the re-sharing indicator. Those come before broader features. Production also needs authenticated access, notifications, durable operations, and approval lifecycle controls. Automated legal decisions, exhaustive rule coverage, and post-publication monitoring are outside V1.
+Production needs authenticated access, notifications, durable operations, and approval lifecycle controls. Portal sharing sends no email; the demonstration's open internal workspace is not a permission model. Automated legal decisions, exhaustive rule coverage, and post-publication monitoring are outside V1. The Mac and tunnel must stay running.
 
 With a real team, I would observe completed cases and measure active reviewer time, correction rounds, waiting by owner, and missed handoffs. That would test whether coordination is actually the limiting step.
 
