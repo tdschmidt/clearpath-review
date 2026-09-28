@@ -602,12 +602,15 @@ export function SubmissionForm({
                   onChange={(e) => update("channel", e.target.value)}
                 >
                   {[
-                    "Paid social",
-                    "Organic social",
-                    "Landing page",
-                    "Display advertising",
-                    "Marketing email",
-                    "Other",
+                    ...new Set([
+                      data.channel,
+                      "Paid social",
+                      "Organic social",
+                      "Landing page",
+                      "Display advertising",
+                      "Marketing email",
+                      "Other",
+                    ]),
                   ].map((v) => (
                     <option key={v}>{v}</option>
                   ))}

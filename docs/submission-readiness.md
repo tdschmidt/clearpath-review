@@ -33,3 +33,9 @@ Selecting another finding clears the previous source/evidence pane before openin
 The queue and case banner identify a withdrawn reference supporting the current approval, including a result already shared. The next action leads to a new revision with a current source; the old decision stays in history. Withdrawn sources cannot be newly selected in the submission picker, while an existing historical selection remains visible and labeled. Nothing silently substitutes a new reference or revokes a human decision.
 
 Completed-case banners also distinguish a shared result, a recorded outside communication, and an uncommunicated decision. Only the latter asks for a handoff; recording an email does not claim verified delivery. These corrections keep next actions consistent with the record and avoid redundant work.
+
+## Display the actual placement in revision forms
+
+Manual browser inspection found that a recorded placement such as “Affiliate / paid social” was absent from the form's fixed option list. The browser displayed “Paid social” while the saved value remained different. Both revision forms now retain the exact current placement as an option. This prevents an apparent change in approval context and preserves imported or more specific channel descriptions. A browser regression checks both forms and a saved external revision.
+
+The full browser run also caught an older test that approved after receiving evidence without explicitly assessing it. Its reviewer now cites that response in the corresponding finding disposition, matching the corrected workflow.
