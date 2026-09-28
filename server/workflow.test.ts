@@ -381,3 +381,42 @@ test('findings and decisions require a recorded human basis on the server', asyn
   assert.throws(() => h.app.locals.store.action(c.id, { ...approved, rationale: '', expectedVersion: c.version }), /rationale/);
   assert.throws(() => h.app.locals.store.action(c.id, { type: 'add_finding', finding: emptyFinding, expectedVersion: c.version }), /basis/);
 });
+
+test('reference versions preserve source bytes, citations, persistence, and withdrawal', async t => {
+  const h = await setup(t);
+  const input = { product: 'personal_loan', name: 'Fall offer', version: '1', validFrom: '2026-09-01', validTo: '2026-12-01', source: 'Pricing approved September 1', disclosure: 'Credit approval required.', actorId: 'priya', facts: [{ label: 'Fee', value: '5%', sourceFileIndex: 0, page: 1 }] };
+  assert.equal((await h.multipart('/api/offers', input)).status, 400);
+  let result = await h.multipart('/api/offers', input, [{ name: 'terms.pdf', bytes: destination }]);
+  assert.equal(result.status, 201);
+  const offer = result.body;
+  assert.equal(offer.createdBy, 'Priya Shah');
+  assert.equal(offer.facts[0].citation.offerId, offer.id);
+  const download = await fetch(`${h.url}/api/offers/${offer.id}/assets/${offer.assets[0].id}`);
+  assert.deepEqual(Buffer.from(await download.arrayBuffer()), destination);
+  const second = new WorkflowStore(h.dataDir, []);
+  assert.equal(second.offers.find(item => item.id === offer.id)?.facts[0].value, '5%');
+  second.close();
+  assert.equal((await h.json(`/api/offers/${offer.id}`, { facts: [] })).status, 404);
+  result = await h.json(`/api/offers/${offer.id}/withdraw`, { reason: 'Pricing superseded this reference.', actorId: 'priya' });
+  assert.equal(result.status, 200);
+  assert.ok(result.body.withdrawnAt);
+  assert.equal((await h.json(`/api/offers/${offer.id}/withdraw`, { reason: 'Again' })).status, 409);
+});
+
+test('legacy migration backs up records and preserves original IDs and bytes without sharing them', async t => {
+  const h = await setup(t, true);
+  const before = h.app.locals.store.list() as ReviewCase[];
+  h.app.locals.store.db.exec('PRAGMA user_version=0');
+  const migrated = new WorkflowStore(h.dataDir, offers);
+  const after = migrated.list();
+  assert.deepEqual(after.map(c => c.id).sort(), before.map(c => c.id).sort());
+  assert.ok(readdirSync(h.dataDir).some(name => name.startsWith('workflow-before-v2-')));
+  for (const c of after) {
+    assert.equal(c.submitterToken, undefined);
+    assert.deepEqual(c.submitterAssetIds, []);
+    assert.ok(c.revisions.every(revision => revision.contextInherited));
+    assert.ok(c.findings.every(finding => finding.audience === 'internal'));
+    c.assets.forEach(asset => assert.equal(createHash('sha256').update(readFileSync(join(h.dataDir, 'assets', asset.id))).digest('hex'), asset.sha256));
+  }
+  migrated.close();
+});

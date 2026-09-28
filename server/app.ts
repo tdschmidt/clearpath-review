@@ -4,10 +4,12 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { ZodError } from 'zod';
 import { offers, examples } from '../fixtures/examples.ts';
-import { actionSchema, revisionSchema, submissionSchema } from './validation.ts';
+import { actionSchema, revisionSchema, submissionSchema, offerSchema, withdrawalSchema } from './validation.ts';
 import { WorkflowError, WorkflowStore } from './store.ts';
 import { buildReviewExport } from './export.ts';
 import type { Example } from './store.ts';
+import { createReference, withdrawReference } from './references.ts';
+import { PARTICIPANTS } from '../shared/types.ts';
 import type { Offer } from '../shared/types.ts';
 
 export function createApp(options: { dataDir?: string; seedDemo?: boolean; offers?: Offer[]; examples?: Example[]; distDir?: string } = {}) {
@@ -40,6 +42,14 @@ export function createApp(options: { dataDir?: string; seedDemo?: boolean; offer
     try { return JSON.parse(req.body.payload); } catch { throw new WorkflowError(400, 'The payload is not valid JSON.'); }
   };
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+  app.get('/api/participants', (_req, res) => res.json(PARTICIPANTS));
+  app.post('/api/offers', upload, (req, res) => res.status(201).json(createReference(store.db, store.assetsDir, offerSchema.parse(payload(req)), (req.files || []) as Express.Multer.File[])));
+  app.post('/api/offers/:id/withdraw', (req, res) => { const input = withdrawalSchema.parse(req.body); res.json(withdrawReference(store.db, req.params.id, input.reason, input.actorId)); });
+  app.get('/api/offers/:id/assets/:assetId', (req, res, next) => {
+    const asset = store.offers.find(offer => offer.id === req.params.id)?.assets?.find(item => item.id === req.params.assetId);
+    if (!asset) throw new WorkflowError(404, 'This source attachment was not found.');
+    sendAsset(asset, req, res, next);
+  });
   app.get('/api/offers', (_req, res) => res.json(store.offers));
   app.get('/api/cases', (_req, res) => res.json(store.list()));
   app.get('/api/cases/:id', (req, res) => res.json(store.get(req.params.id)));
@@ -64,6 +74,9 @@ export function createApp(options: { dataDir?: string; seedDemo?: boolean; offer
     const c = store.get(req.params.caseId);
     const asset = c.assets.find(item => item.id === req.params.assetId);
     if (!asset) throw new WorkflowError(404, 'This attachment was not found.', 'not_found');
+    sendAsset(asset, req, res, next);
+  });
+  function sendAsset(asset: import('../shared/types.ts').Asset, req: express.Request, res: express.Response, next: express.NextFunction) {
     const path = join(store.assetsDir, asset.id);
     if (!existsSync(path)) throw new WorkflowError(404, 'Attachment bytes are unavailable. The case record has been preserved.', 'asset_unavailable');
     const inline = ['image/png', 'image/jpeg', 'application/pdf'].includes(asset.mime) && req.query.download !== '1';
@@ -75,7 +88,7 @@ export function createApp(options: { dataDir?: string; seedDemo?: boolean; offer
     } else res.attachment(asset.name);
     res.type(asset.mime);
     res.sendFile(path, error => { if (error) next(error); });
-  });
+  }
   app.use('/api', (_req, _res, next) => next(new WorkflowError(404, 'This API route was not found.', 'not_found')));
   const dist = resolve(options.distDir || './dist');
   app.use(express.static(dist));

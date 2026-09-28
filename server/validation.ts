@@ -44,3 +44,11 @@ export const actionSchema = z.discriminatedUnion('type', [
   z.object({ ...version, type: z.literal('decide'), outcome: z.enum(['approved', 'rejected']), scope: text(3000), rationale: required(5000), reviewed: z.boolean() }).strict(),
   z.object({ ...version, type: z.literal('save_draft'), subject: required(300), body: required(20000) }).strict(),
 ]);
+
+export const offerSchema = z.object({
+  product: z.enum(['personal_loan', 'credit_card', 'mortgage']), name: required(200), version: required(120),
+  validFrom: date.refine(Boolean, 'A start date is required.'), validTo: date.refine(Boolean, 'An end date is required.'),
+  source: required(3000), disclosure: text(10000), supersedesId: text(120).optional(), actorId: text(120).optional(),
+  facts: z.array(z.object({ label: required(200), value: required(3000), sourceFileIndex: z.number().int().min(0).optional(), page: z.number().int().min(1).max(10000).optional() }).strict()).min(1).max(100),
+}).strict();
+export const withdrawalSchema = z.object({ reason: required(3000), actorId: text(120).optional() }).strict();

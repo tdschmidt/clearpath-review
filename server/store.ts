@@ -1,9 +1,11 @@
 import { DatabaseSync } from 'node:sqlite';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { REVIEWER, currentRevision, openBlockers } from '../shared/types.ts';
 import type { Asset, CaseAction, Offer, PackageRevision, ReviewCase, RevisionInput, SubmissionInput } from '../shared/types.ts';
+
+import { listReferences } from './references.ts';
 
 export class WorkflowError extends Error {
   constructor(public status: number, message: string, public code = 'invalid_request', public currentVersion?: number) { super(message); }
@@ -35,18 +37,43 @@ export function inspectUpload(file: Upload) {
 export class WorkflowStore {
   readonly db: DatabaseSync;
   readonly assetsDir: string;
-  constructor(readonly dataDir: string, readonly offers: Offer[], readonly examples: Example[] = []) {
+  constructor(readonly dataDir: string, initialOffers: Offer[], readonly examples: Example[] = []) {
     mkdirSync(dataDir, { recursive: true });
     this.assetsDir = join(resolve(dataDir), 'assets');
     mkdirSync(this.assetsDir, { recursive: true });
-    this.db = new DatabaseSync(join(dataDir, 'workflow.sqlite'));
+    const databasePath = join(dataDir, 'workflow.sqlite');
+    const existed = existsSync(databasePath);
+    this.db = new DatabaseSync(databasePath);
+    const schemaVersion = Number(this.db.prepare('PRAGMA user_version').get()!.user_version);
+    if (existed && schemaVersion < 2) {
+      const backup = join(resolve(dataDir), `workflow-before-v2-${Date.now()}.sqlite`);
+      this.db.exec(`VACUUM INTO '${backup.replaceAll("'", "''")}'`);
+    }
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
       CREATE TABLE IF NOT EXISTS cases (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, version INTEGER NOT NULL, data TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS requests (scope TEXT NOT NULL, key TEXT NOT NULL, digest TEXT NOT NULL, response TEXT NOT NULL, PRIMARY KEY(scope,key));`);
+      CREATE TABLE IF NOT EXISTS requests (scope TEXT NOT NULL, key TEXT NOT NULL, digest TEXT NOT NULL, response TEXT NOT NULL, PRIMARY KEY(scope,key));
+      CREATE TABLE IF NOT EXISTS offers (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, data TEXT NOT NULL);`);
+    this.transaction(() => {
+      initialOffers.forEach(offer => this.db.prepare('INSERT OR IGNORE INTO offers(id,created_at,data) VALUES (?,?,?)').run(offer.id, offer.createdAt || '', JSON.stringify(offer)));
+      if (schemaVersion < 2) {
+        for (const row of this.db.prepare('SELECT id,data FROM cases').all()) {
+          const c = JSON.parse(row.data as string) as ReviewCase;
+          c.revisions.forEach(revision => {
+            revision.product ??= c.product; revision.channel ??= c.channel; revision.launchDate ??= c.launchDate;
+            revision.contextInherited = true;
+          });
+          c.findings.forEach(finding => { finding.audience ??= 'internal'; });
+          c.publishedFeedback ??= []; c.publishedResults ??= []; c.responses ??= []; c.communications ??= []; c.submitterAssetIds ??= [];
+          this.db.prepare('UPDATE cases SET data=? WHERE id=?').run(JSON.stringify(c), c.id);
+        }
+        this.db.exec('PRAGMA user_version=2');
+      }
+    });
   }
+  get offers(): Offer[] { return listReferences(this.db); }
   close() { this.db.close(); }
   list(): ReviewCase[] {
-    return this.db.prepare('SELECT data FROM cases ORDER BY seq DESC').all().map(row => JSON.parse(row.data as string));
+    return this.db.prepare("SELECT data FROM cases ORDER BY json_extract(data, '$.updatedAt') DESC, id ASC").all().map(row => JSON.parse(row.data as string));
   }
   get(caseId: string): ReviewCase {
     const row = this.db.prepare('SELECT data FROM cases WHERE id=?').get(caseId);
