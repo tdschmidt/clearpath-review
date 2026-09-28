@@ -23,3 +23,7 @@ Validation covers advisory-to-required changes, location and PDF-page correction
 ## Attribute internal revisions to their recorder
 
 An internal revision now defaults “Updated by” to the active demo reviewer, rather than the original affiliate. The case contact remains unchanged. This prevents silently attributing the review team's package assembly to the person who supplied the material. Authenticated identity remains a production requirement; this fixes the demonstrator's misleading default.
+
+## Keep evidence tied to the selected finding
+
+Selecting another finding clears the previous source/evidence pane before opening that finding's original material, if any. An uncited request must not inherit an unrelated image from the previous assessment. This addresses a misleading visual context without changing preserved evidence or adding document analysis.

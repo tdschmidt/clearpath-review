@@ -217,6 +217,8 @@ export function ReviewWorkspace({
     });
   }
   function compareOriginal(finding: Finding) {
+    setSource(null);
+    setEvidence(null);
     showCurrentFinding(finding);
     const citation = finding.citations?.[0];
     const assetId = citation?.assetId || finding.assetId;
@@ -231,6 +233,8 @@ export function ReviewWorkspace({
     }
   }
   function assessFinding(finding: Finding) {
+    setSource(null);
+    setEvidence(null);
     setTab("review");
     setEditor(null);
     setAssessingId(finding.id);
