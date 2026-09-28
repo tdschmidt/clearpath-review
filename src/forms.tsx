@@ -112,7 +112,7 @@ export function SubmissionForm({
     submitterEmail: existing?.submitterEmail || "",
     channel: existing?.channel || "Paid social",
     launchDate: existing?.launchDate || "",
-    submittedBy: existing?.submitter || "",
+    submittedBy: existing ? REVIEWER : "",
     summary: "",
     offerId: previous?.offerId || "",
     intendedUse: previous?.intendedUse || "",
@@ -959,7 +959,10 @@ export function SubmissionForm({
                 </Field>
               </div>
             ) : (
-              <Field label="Updated by">
+              <Field
+                label="Updated by"
+                hint="Person recording this revision. The original submitter remains the case contact."
+              >
                 <input
                   required
                   maxLength={120}

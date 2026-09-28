@@ -19,3 +19,7 @@ The unshared indicator now compares title, request, required/advisory status, lo
 The same public-field projection is used for publishing and comparison. Old messages remain immutable; a changed request is explicitly marked in the reply composer and reaches the submitter only after deliberate sharing. Received responses take priority over preparing another message. This supports the real correction-and-resubmission loop described in the [research](research.md), without adding email integration.
 
 Validation covers advisory-to-required changes, location and PDF-page corrections, reverting to older wording, private-only edits, and unchanged instructions across revisions. The browser test checks the unsent warning, deliberate re-sharing, and the resulting submitter snapshot.
+
+## Attribute internal revisions to their recorder
+
+An internal revision now defaults “Updated by” to the active demo reviewer, rather than the original affiliate. The case contact remains unchanged. This prevents silently attributing the review team's package assembly to the person who supplied the material. Authenticated identity remains a production requirement; this fixes the demonstrator's misleading default.
