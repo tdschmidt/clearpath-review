@@ -128,7 +128,8 @@ export interface ReplyDraft {
   updatedAt?: string;
   version?: number;
   findingIds?: string[];
-  previousVersions?: { version: number; subject: string; body: string; at: string }[];
+  decisionId?: string;
+  previousVersions?: { version: number; subject: string; body: string; at: string; decisionId?: string }[];
 }
 export interface HistoryEvent {
   id: string;
@@ -162,7 +163,7 @@ export interface SharedRequest {
 }
 export interface CommunicationRecord {
   id: string; createdAt: string; occurredAt: string; actor: string; recipient: string;
-  messageId: string; messageVersion: number; channel: string; note: string;
+  messageId: string; messageVersion: number; channel: string; note: string; decisionId?: string;
 }
 export interface PublishedResult {
   id: string; decisionId: string; revisionId: string; createdAt: string; publishedBy: string;
@@ -275,7 +276,7 @@ export type CaseAction = { expectedVersion: number; actorId?: string } & (
       rationale: string;
       reviewed: boolean;
     }
-  | { type: "save_draft"; subject: string; body: string; draftId?: string; findingIds?: string[] }
+  | { type: "save_draft"; subject: string; body: string; draftId?: string; findingIds?: string[]; decisionId?: string }
 );
 
 export const currentRevision = (c: ReviewCase) =>
@@ -286,6 +287,16 @@ export const openBlockers = (c: ReviewCase) =>
   );
 export const pendingResponses = (c: ReviewCase) =>
   (c.responses || []).filter(response => !response.assessment);
+export const decisionHandoff = (c: ReviewCase, decision?: Decision): "pending" | "shared" | "recorded" => {
+  const target = decision || [...c.decisions].reverse().find(item => item.revisionId === currentRevision(c).id && !item.withdrawn);
+  if (target && c.publishedResults?.some(result => result.decisionId === target.id && !result.withdrawn)) return "shared";
+  if (target && c.communications?.some(record => record.decisionId === target.id)) return "recorded";
+  return "pending";
+};
+export const pendingDecisionHandoff = (c: ReviewCase): Decision | undefined => {
+  const decision = [...c.decisions].reverse().find(item => item.revisionId === currentRevision(c).id && !item.withdrawn);
+  return decision && decisionHandoff(c, decision) === "pending" ? decision : undefined;
+};
 export const assetUrl = (caseId: string, assetId: string, download = false) =>
   `/api/cases/${encodeURIComponent(caseId)}/assets/${encodeURIComponent(assetId)}${download ? "?download=1" : ""}`;
 

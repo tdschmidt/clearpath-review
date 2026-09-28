@@ -47,7 +47,7 @@ export const actionSchema = z.discriminatedUnion('type', [
   z.object({ ...version, type: z.literal('resume') }).strict(),
   z.object({ ...version, type: z.literal('add_note'), text: required(5000) }).strict(),
   z.object({ ...version, type: z.literal('decide'), outcome: z.enum(['approved', 'rejected']), scope: text(3000), rationale: required(5000), reviewed: z.boolean() }).strict(),
-  z.object({ ...version, type: z.literal('save_draft'), subject: required(300), body: required(20000), draftId: text(120).optional(), findingIds: z.array(required(120)).max(100).optional() }).strict(),
+  z.object({ ...version, type: z.literal('save_draft'), subject: required(300), body: required(20000), draftId: text(120).optional(), findingIds: z.array(required(120)).max(100).optional(), decisionId: text(120).optional() }).strict(),
   z.object({ ...version, type: z.literal('edit_finding'), findingId: required(120), finding }).strict(),
   z.object({ ...version, type: z.literal('assign_owner'), ownerId: required(120) }).strict(),
   z.object({ ...version, type: z.literal('correct_contact'), title: required(200), submitter: required(120), submitterEmail: z.union([z.email().max(254), z.literal('')]), reason: required(3000) }).strict(),

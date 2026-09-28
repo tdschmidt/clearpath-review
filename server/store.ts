@@ -321,15 +321,17 @@ export class WorkflowStore {
         }
         case 'save_draft': {
           if (action.findingIds?.some(findingId => !c.findings.some(finding => finding.id === findingId))) throw new WorkflowError(400, 'Select findings from this case.');
+          if (action.decisionId && !c.decisions.some(decision => decision.id === action.decisionId && decision.revisionId === revision.id && !decision.withdrawn)) throw new WorkflowError(400, 'Link this message only to a current, unwithdrawn decision.');
           const existing = action.draftId ? c.drafts.find(draft => draft.id === action.draftId) : undefined;
           if (action.draftId && !existing) throw new WorkflowError(404, 'This draft was not found.');
           if (existing && existing.revisionId !== revision.id) throw new WorkflowError(409, 'This draft belongs to an earlier revision. Create a new draft before reusing it.');
           if (existing) {
             existing.previousVersions ??= [];
-            existing.previousVersions.push({ version: existing.version || 1, subject: existing.subject, body: existing.body, at: existing.updatedAt || existing.createdAt });
+            existing.previousVersions.push({ version: existing.version || 1, subject: existing.subject, body: existing.body, at: existing.updatedAt || existing.createdAt, ...(existing.decisionId ? { decisionId: existing.decisionId } : {}) });
             existing.subject = action.subject; existing.body = action.body; existing.findingIds = action.findingIds || [];
             existing.version = (existing.version || 1) + 1; existing.updatedAt = now();
-          } else c.drafts.push({ id: id(), subject: action.subject, body: action.body, createdAt: now(), revisionId: revision.id, status: 'prepared', version: 1, findingIds: action.findingIds || [] });
+            if (action.decisionId) existing.decisionId = action.decisionId; else delete existing.decisionId;
+          } else c.drafts.push({ id: id(), subject: action.subject, body: action.body, createdAt: now(), revisionId: revision.id, status: 'prepared', version: 1, findingIds: action.findingIds || [], ...(action.decisionId ? { decisionId: action.decisionId } : {}) });
           event('draft_prepared', existing ? 'Reply draft updated. Nothing was sent.' : 'Reply draft prepared. Nothing was sent.');
           break;
         }

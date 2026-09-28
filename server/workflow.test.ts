@@ -10,7 +10,7 @@ import { createApp } from './app.ts';
 import { buildReviewExport } from './export.ts';
 import { WorkflowStore } from './store.ts';
 import { offers, examples } from '../fixtures/examples.ts';
-import { currentRevision, pendingResponses, REVIEWER } from '../shared/types.ts';
+import { currentRevision, pendingResponses, decisionHandoff, pendingDecisionHandoff, REVIEWER } from '../shared/types.ts';
 import type { ReviewCase, SubmissionInput } from '../shared/types.ts';
 
 const png = readFileSync('public/fixtures/loan/v1/social-ad.png');
@@ -731,7 +731,7 @@ test('explicit response evidence clears attention only after all linked findings
   c = (await h.action(c, { type: 'disposition', findingId: c.findings[1].id, status: 'open', reason: 'Read the response, but another document is still needed.', responseIds: [responseId] })).body;
   assert.equal(pendingResponses(c).length, 0);
   assert.equal(c.findings[1].status, 'open');
-  assert.equal(c.responses![0].assessment?.by, REVIEWER);
+  assert.equal(c.responses!.find(response => response.id === responseId)?.assessment?.by, REVIEWER);
   assert.equal(c.responses![0].sharedAcknowledgment, undefined);
   assert.equal((await h.action(c, approved)).body.code, 'unresolved_findings');
   c = (await h.action(c, { type: 'add_response', text: 'An unlinked general case answer.', findingIds: [], actorId: 'priya' })).body;
@@ -740,4 +740,44 @@ test('explicit response evidence clears attention only after all linked findings
   assert.equal(pendingResponses(c).length, 1);
   c = (await h.action(c, { type: 'disposition', findingId: c.findings[1].id, status: 'resolved', reason: 'The reviewer considered the general answer.', responseIds: [generalId] })).body;
   assert.equal(pendingResponses(c).length, 0);
+});
+
+
+test('decision handoff requires the exact result or an explicitly bound communicated message version', async t => {
+  const h = await setup(t);
+  let c: ReviewCase = (await h.multipart('/api/cases', base)).body;
+  c = (await h.action(c, { type: 'confirm_intake' })).body;
+  c = (await h.action(c, { type: 'save_draft', subject: 'Earlier request', body: 'Please supply context.' })).body;
+  const unrelated = c.drafts[0];
+  c = (await h.action(c, approved)).body;
+  const decision = c.decisions[0];
+  assert.equal(pendingDecisionHandoff(c)?.id, decision.id);
+  assert.equal(decisionHandoff(c, decision), 'pending');
+  c = (await h.action(c, { type: 'record_communication', messageId: unrelated.id, messageVersion: 1, recipient: base.submitterEmail, occurredAt: new Date().toISOString(), channel: 'Email', note: '' })).body;
+  assert.equal(pendingDecisionHandoff(c)?.id, decision.id);
+  assert.equal(c.communications![0].decisionId, undefined);
+  assert.equal((await h.action(c, { type: 'save_draft', subject: 'Invalid', body: 'Invalid binding.', decisionId: 'some-other-decision' })).status, 400);
+  c = (await h.action(c, { type: 'save_draft', subject: 'Review result', body: 'The exact scoped result.', decisionId: decision.id })).body;
+  const resultDraft = c.drafts.at(-1)!;
+  assert.equal(decisionHandoff(c), 'pending');
+  c = (await h.action(c, { type: 'save_draft', draftId: resultDraft.id, subject: 'Unrelated edit', body: 'New unrelated message.' })).body;
+  assert.equal(c.drafts.at(-1)!.decisionId, undefined);
+  assert.equal(c.drafts.at(-1)!.previousVersions![0].decisionId, decision.id);
+  c = (await h.action(c, { type: 'record_communication', messageId: resultDraft.id, messageVersion: 2, recipient: base.submitterEmail, occurredAt: new Date().toISOString(), channel: 'Email', note: '' })).body;
+  assert.equal(decisionHandoff(c), 'pending');
+  assert.equal((await h.action(c, { type: 'record_communication', messageId: resultDraft.id, messageVersion: 1, recipient: base.submitterEmail, occurredAt: '2020-01-01T00:00:00.000Z', channel: 'Email', note: '' })).status, 400);
+  c = (await h.action(c, { type: 'record_communication', messageId: resultDraft.id, messageVersion: 1, recipient: base.submitterEmail, occurredAt: new Date().toISOString(), channel: 'Email', note: '' })).body;
+  assert.equal(c.communications!.at(-1)!.decisionId, decision.id);
+  assert.equal(decisionHandoff(c), 'recorded');
+  assert.equal(pendingDecisionHandoff(c), undefined);
+  c = (await h.action(c, { type: 'publish_result', decisionId: decision.id, message: 'The result is now also available on this page.' })).body;
+  assert.equal(decisionHandoff(c), 'shared');
+  c = (await h.revise(c, { copy: 'A new version needs its own review.' })).body;
+  assert.equal(pendingDecisionHandoff(c), undefined);
+  c = (await h.action(c, { type: 'confirm_intake' })).body;
+  c = (await h.action(c, approved)).body;
+  assert.equal(decisionHandoff(c), 'pending');
+  assert.equal(pendingDecisionHandoff(c)?.id, c.decisions.at(-1)!.id);
+  c = (await h.action(c, { type: 'withdraw_approval', decisionId: c.decisions.at(-1)!.id, reason: 'Withdraw current approval.' })).body;
+  assert.equal(pendingDecisionHandoff(c), undefined);
 });

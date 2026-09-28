@@ -94,12 +94,17 @@ export function applyHandoff(c: ReviewCase, action: CaseAction, actor: string, o
     }
     case 'record_communication': {
       const draft = c.drafts.find(item => item.id === action.messageId && (item.version || 1) === action.messageVersion);
-      const priorDraft = c.drafts.some(item => item.id === action.messageId && item.previousVersions?.some(version => version.version === action.messageVersion));
+      const priorDraft = c.drafts.find(item => item.id === action.messageId)?.previousVersions?.find(version => version.version === action.messageVersion);
       const shared = [...(c.publishedFeedback || []), ...(c.publishedResults || [])].some(item => item.id === action.messageId) && action.messageVersion === 1;
       if (!draft && !priorDraft && !shared) throw new WorkflowError(400, 'Select a saved message version to record communication.');
       if (new Date(action.occurredAt).getTime() > Date.now() + 60_000) throw new WorkflowError(400, 'A communication record cannot be dated in the future.');
+      const result = action.messageVersion === 1 ? c.publishedResults?.find(item => item.id === action.messageId) : undefined;
+      const decisionId = draft?.decisionId || priorDraft?.decisionId || result?.decisionId;
+      const decision = decisionId ? c.decisions.find(item => item.id === decisionId) : undefined;
+      // The form records minutes; tolerate its omitted seconds, not a pre-decision message.
+      if (decision && Date.parse(action.occurredAt) < Date.parse(decision.createdAt) - 60_000) throw new WorkflowError(400, 'A decision cannot be communicated before it was recorded.');
       c.communications ??= [];
-      c.communications.push({ id: randomUUID(), createdAt: now(), occurredAt: action.occurredAt, actor, recipient: action.recipient, messageId: action.messageId, messageVersion: action.messageVersion, channel: action.channel, note: action.note });
+      c.communications.push({ id: randomUUID(), createdAt: now(), occurredAt: action.occurredAt, actor, recipient: action.recipient, messageId: action.messageId, messageVersion: action.messageVersion, channel: action.channel, note: action.note, ...(decisionId ? { decisionId } : {}) });
       event('communication_recorded', `${actor} recorded external communication with ${action.recipient} by ${action.channel}. Delivery was not verified.`);
       return true;
     }
