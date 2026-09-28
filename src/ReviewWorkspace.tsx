@@ -28,6 +28,7 @@ import { clearDrafts, useDraftState } from "./drafts";
 import {
   currentRevision,
   openBlockers,
+  pendingResponses,
   PRODUCT_LABELS,
   ROLE_LABELS,
   PARTICIPANTS,
@@ -45,6 +46,7 @@ import {
 } from "../shared/types";
 import "./reviewer.css";
 import { ResponseThread } from "./ResponseThread";
+import { FindingReview, currentFindingAsset } from "./FindingReview";
 
 export type ReviewDialog =
   | "revision"
@@ -107,8 +109,12 @@ export function ReviewWorkspace({
   const [evidence, setEvidence] = useState<{
     assetId: string;
     page: number;
+    title?: string;
   } | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [assessingId, setAssessingId] = useState("");
+  const assessingFinding = review.findings.find((f) => f.id === assessingId);
+  const received = pendingResponses(review);
   const [showClosed, setShowClosed] = useState(false);
   const [decisionId, setDecisionId] = useState("");
   const [offerId, setOfferId] = useState(rev.offerId);
@@ -208,6 +214,33 @@ export function ReviewWorkspace({
     setSource(citation);
     setEvidence(null);
   }
+  function showCurrentFinding(finding: Finding) {
+    const component = currentFindingAsset(review, finding);
+    setLocation({
+      ...revisionLocation(rev),
+      ...(component ? { assetId: component.assetId } : {}),
+    });
+  }
+  function compareOriginal(finding: Finding) {
+    showCurrentFinding(finding);
+    const citation = finding.citations?.[0];
+    const assetId = citation?.assetId || finding.assetId;
+    if (assetId) {
+      setSource(null);
+      setEvidence({
+        assetId,
+        page: citation?.page || 1,
+        title: `Original material · version ${review.revisions.find((r) => r.id === (citation?.revisionId || finding.revisionId))?.number || "?"}`,
+      });
+    }
+  }
+  function assessFinding(finding: Finding) {
+    setTab("review");
+    setEditor(null);
+    setAssessingId(finding.id);
+    showCurrentFinding(finding);
+    if (finding.revisionId !== rev.id) compareOriginal(finding);
+  }
   function showDecision(decision: Decision) {
     setDecisionId(decision.id);
     setTab("decision");
@@ -244,41 +277,46 @@ export function ReviewWorkspace({
           ? missing.join(" · ")
           : "Check the material, offer reference, and intended use below.",
       }
-    : rechecks.length
+    : received.length
       ? {
-          title: "Recheck the revision",
-          text: `${rechecks.length} finding${rechecks.length === 1 ? " needs" : "s need"} another look against version ${rev.number}.`,
+          title: "Assess received responses",
+          text: `${received.length} response${received.length === 1 ? " needs" : "s need"} assessment by ${review.owner}. Other open requests remain outstanding.`,
         }
-      : currentDecision
+      : rechecks.length
         ? {
-            title: "Decision recorded",
-            text: `Version ${rev.number} · ${currentDecision.outcome}. Share the result with the submitter when ready.`,
+            title: "Recheck the revision",
+            text: `${rechecks.length} finding${rechecks.length === 1 ? " needs" : "s need"} another look against version ${rev.number}.`,
           }
-        : review.status === "cancelled"
+        : currentDecision
           ? {
-              title: "Review cancelled",
-              text:
-                review.cancelled?.reason || "No further review is scheduled.",
+              title: "Decision recorded",
+              text: `Version ${rev.number} · ${currentDecision.outcome}. Share the result with the submitter when ready.`,
             }
-          : review.status === "waiting"
+          : review.status === "cancelled"
             ? {
-                title: `Waiting on ${review.nextOwner}`,
-                text: review.waitingReason,
+                title: "Review cancelled",
+                text:
+                  review.cancelled?.reason || "No further review is scheduled.",
               }
-            : unshared.length
+            : review.status === "waiting"
               ? {
-                  title: "Prepare feedback",
-                  text: `${unshared.length} submitter request${unshared.length === 1 ? " has" : "s have"} not been shared for this version.`,
+                  title: `Waiting on ${review.nextOwner}`,
+                  text: review.waitingReason,
                 }
-              : blockers.length
+              : unshared.length
                 ? {
-                    title: "Review open findings",
-                    text: `${blockers.length} required finding${blockers.length === 1 ? " remains" : "s remain"}. ${[...new Set(blockers.map((f) => f.owner))].join(", ")}`,
+                    title: "Prepare feedback",
+                    text: `${unshared.length} submitter request${unshared.length === 1 ? " has" : "s have"} not been shared for this version.`,
                   }
-                : {
-                    title: "Review material and record a decision",
-                    text: "No recorded findings block a decision. Inspect the complete package and its supporting context.",
-                  };
+                : blockers.length
+                  ? {
+                      title: "Review open findings",
+                      text: `${blockers.length} required finding${blockers.length === 1 ? " remains" : "s remain"}. ${[...new Set(blockers.map((f) => f.owner))].join(", ")}`,
+                    }
+                  : {
+                      title: "Review material and record a decision",
+                      text: "No recorded findings block a decision. Inspect the complete package and its supporting context.",
+                    };
 
   return (
     <div className="review-workspace">
@@ -330,6 +368,20 @@ export function ReviewWorkspace({
             <strong>{next.title}</strong>
             <p>{next.text}</p>
           </div>
+          {received.length > 0 && (
+            <button
+              className="button primary"
+              onClick={() => {
+                const finding = review.findings.find((f) =>
+                  received[0].findingIds.includes(f.id),
+                );
+                if (finding) assessFinding(finding);
+                else setTab("drafts");
+              }}
+            >
+              Assess responses
+            </button>
+          )}
           {rechecks.length > 0 && (
             <button
               className="button secondary"
@@ -587,7 +639,7 @@ export function ReviewWorkspace({
               >
                 <header className="panel-header">
                   <div>
-                    <h2>Supporting evidence</h2>
+                    <h2>{evidence.title || "Supporting evidence"}</h2>
                     <p>{evidenceAsset?.name}</p>
                   </div>
                   <button
@@ -618,6 +670,26 @@ export function ReviewWorkspace({
                 intendedUse={rev.intendedUse}
                 onSource={openSource}
               />
+              {assessingFinding && !editor && (
+                <FindingReview
+                  review={review}
+                  finding={assessingFinding}
+                  saving={saving}
+                  reviewerName={reviewerName || review.owner}
+                  onAction={onAction}
+                  onEvidence={openEvidence}
+                  onOriginal={() => compareOriginal(assessingFinding)}
+                  onCurrent={() => showCurrentFinding(assessingFinding)}
+                  onDisposition={(status) =>
+                    setEditor({
+                      mode: "disposition",
+                      finding: assessingFinding,
+                      status,
+                    })
+                  }
+                  onClose={() => setAssessingId("")}
+                />
+              )}
               {editor ? (
                 <FindingEditor
                   key={
@@ -631,9 +703,13 @@ export function ReviewWorkspace({
                   source={source}
                   saving={saving}
                   onAction={onAction}
-                  onClose={() => setEditor(null)}
+                  onEvidence={openEvidence}
+                  onClose={() => {
+                    setEditor(null);
+                    setAssessingId("");
+                  }}
                 />
-              ) : (
+              ) : !assessingFinding ? (
                 <section className="panel rw-findings">
                   <header className="panel-header">
                     <div>
@@ -658,14 +734,16 @@ export function ReviewWorkspace({
                           review={review}
                           onJump={jump}
                           onSource={openSource}
+                          onAssess={() => assessFinding(f)}
                           onEdit={() => setEditor({ mode: "edit", finding: f })}
-                          onDisposition={(status) =>
+                          onDisposition={(status) => {
+                            showCurrentFinding(f);
                             setEditor({
                               mode: "disposition",
                               finding: f,
                               status,
-                            })
-                          }
+                            });
+                          }}
                         />
                       ))}
                     </div>
@@ -694,7 +772,7 @@ export function ReviewWorkspace({
                     </footer>
                   )}
                 </section>
-              )}
+              ) : null}
               <div className="rw-context-summary">
                 <strong>Submitted by {review.submitter}</strong>
                 <span>{review.submitterEmail}</span>
@@ -711,16 +789,7 @@ export function ReviewWorkspace({
         <VersionComparison
           review={review}
           offers={offers}
-          onFinding={(finding) => {
-            setTab("review");
-            setEditor({ mode: "disposition", finding, status: "resolved" });
-            jump(
-              finding.citations?.[0] || {
-                revisionId: finding.revisionId,
-                assetId: finding.assetId,
-              },
-            );
-          }}
+          onFinding={assessFinding}
         />
       )}
       {tab === "decision" && selectedDecision && (
@@ -746,6 +815,9 @@ export function ReviewWorkspace({
           review={review}
           onDialog={onDialog}
           onEvidence={openEvidence}
+          onAction={onAction}
+          saving={saving}
+          reviewerName={reviewerName || review.owner}
         />
       )}
       {tab === "details" && (
@@ -1000,6 +1072,7 @@ function FindingCard({
   onSource,
   onEdit,
   onDisposition,
+  onAssess,
 }: {
   finding: Finding;
   currentNumber: number;
@@ -1008,6 +1081,7 @@ function FindingCard({
   onSource: (citation: SourceCitation) => void;
   onEdit?: () => void;
   onDisposition?: (status: Finding["status"]) => void;
+  onAssess?: () => void;
 }) {
   const citations = f.citations?.length
     ? f.citations
@@ -1080,6 +1154,13 @@ function FindingCard({
           {f.disposition.reason}
         </p>
       )}
+      {onAssess && (
+        <button type="button" className="button secondary" onClick={onAssess}>
+          {(review.responses || []).some((r) => r.findingIds.includes(f.id))
+            ? "Review answer and evidence"
+            : "Review finding"}
+        </button>
+      )}
       {!closed(review) && onDisposition && (
         <div className="rw-finding-buttons">
           {f.status === "open" || f.needsRecheck ? (
@@ -1123,10 +1204,12 @@ function FindingEditor({
   source,
   saving,
   onAction,
+  onEvidence,
   onClose,
 }: {
   review: ReviewCase;
   editor: Editor;
+  onEvidence: (assetId: string) => void;
   location: Location;
   source: SourceCitation | null;
   saving: boolean;
@@ -1198,6 +1281,17 @@ function FindingEditor({
   const setReason = (text: string) =>
     setReasonDraft({ text, baseVersion: reasonVersion });
   const [error, setError] = useState("");
+  const [responseIds, setResponseIds] = useState<string[]>([]);
+  const [shareStatus, setShareStatus] = useState(false);
+  const responses = (review.responses || []).filter(
+    (r) =>
+      finding && (r.findingIds.includes(finding.id) || !r.findingIds.length),
+  );
+  const shared =
+    finding &&
+    (review.publishedFeedback || []).some((p) =>
+      p.findings.some((f) => f.id === finding.id),
+    );
   const baseline =
     editor.mode === "disposition" ? reasonVersion : data.draftBaseVersion;
   const changed = baseline !== review.version;
@@ -1226,6 +1320,8 @@ function FindingEditor({
             findingId: editor.finding.id,
             status: editor.status,
             reason,
+            responseIds,
+            shareWithSubmitter: shareStatus,
           }
         : editor.mode === "edit"
           ? {
@@ -1274,6 +1370,36 @@ function FindingEditor({
                 <strong>Requested action</strong>
                 <p>{finding!.request}</p>
               </div>
+              {responses.length > 0 && (
+                <div className="rw-resolution-evidence">
+                  <h3>Returned answers and evidence</h3>
+                  <ResponseThread
+                    review={review}
+                    responses={responses}
+                    onEvidence={onEvidence}
+                  />
+                  {responses.map((response) => (
+                    <label className="check-line" key={response.id}>
+                      <input
+                        type="checkbox"
+                        checked={responseIds.includes(response.id)}
+                        onChange={(e) =>
+                          setResponseIds((old) =>
+                            e.target.checked
+                              ? [...old, response.id]
+                              : old.filter((id) => id !== response.id),
+                          )
+                        }
+                      />
+                      <span>
+                        Use {response.author}'s response of{" "}
+                        {dateTime(response.createdAt)} as evidence for this
+                        disposition.
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
               <Field
                 label={
                   editor.status === "resolved"
@@ -1292,6 +1418,28 @@ function FindingEditor({
                   onChange={(e) => setReason(e.target.value)}
                 />
               </Field>
+              {shared && (
+                <label className="check-line">
+                  <input
+                    type="checkbox"
+                    checked={shareStatus}
+                    onChange={(e) => setShareStatus(e.target.checked)}
+                  />
+                  <span>
+                    Share this request's status with the submitter.
+                    <small>
+                      Only “
+                      {editor.status === "resolved"
+                        ? "Accepted"
+                        : editor.status === "dismissed"
+                          ? "No longer required"
+                          : "Open"}
+                      ” is shared. Your reasoning stays internal; this is not
+                      package approval.
+                    </small>
+                  </span>
+                </label>
+              )}
               <p className="small-muted">
                 The disposition will reference current version {rev.number}.
                 Inspect the material and sources beside this editor.
@@ -2239,10 +2387,16 @@ function ReplyHistory({
   review,
   onDialog,
   onEvidence,
+  onAction,
+  saving,
+  reviewerName,
 }: {
   review: ReviewCase;
   onDialog: (dialog: ReviewDialog) => void;
   onEvidence: (assetId: string) => void;
+  onAction: ReviewWorkspaceProps["onAction"];
+  saving: boolean;
+  reviewerName: string;
 }) {
   const rev = currentRevision(review);
   return (
@@ -2346,6 +2500,9 @@ function ReplyHistory({
           review={review}
           responses={[...(review.responses || [])].reverse()}
           onEvidence={onEvidence}
+          onAction={onAction}
+          saving={saving}
+          reviewerName={reviewerName}
         />
       </section>
       <section className="panel">

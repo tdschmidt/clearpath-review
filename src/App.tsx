@@ -50,6 +50,7 @@ import {
   assetUrl,
   currentRevision,
   openBlockers,
+  pendingResponses,
   PRODUCT_LABELS,
   REVIEWER,
   PARTICIPANTS,
@@ -540,7 +541,8 @@ function Queue({
       (c) =>
         (filter === "all" ||
           (filter === "active"
-            ? ["needs_intake", "in_review"].includes(c.status)
+            ? ["needs_intake", "in_review"].includes(c.status) ||
+              pendingResponses(c).length > 0
             : filter === "completed"
               ? isClosed(c)
               : c.status === filter)) &&
@@ -724,15 +726,17 @@ function Queue({
                     </td>
                     <td>
                       <span className="next-action">
-                        {isClosed(c)
-                          ? "Decision recorded"
-                          : c.status === "needs_intake"
-                            ? "Confirm submitted package"
-                            : c.status === "waiting"
-                              ? c.waitingReason
-                              : openBlockers(c).length
-                                ? `${openBlockers(c).length} findings to address`
-                                : "Review current package"}
+                        {pendingResponses(c).length
+                          ? `${pendingResponses(c).length} response${pendingResponses(c).length === 1 ? "" : "s"} to assess`
+                          : isClosed(c)
+                            ? "Decision recorded"
+                            : c.status === "needs_intake"
+                              ? "Confirm submitted package"
+                              : c.status === "waiting"
+                                ? c.waitingReason
+                                : openBlockers(c).length
+                                  ? `${openBlockers(c).length} findings to address`
+                                  : "Review current package"}
                       </span>
                       <span className="table-sub">
                         {[
