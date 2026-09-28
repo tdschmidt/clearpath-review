@@ -953,7 +953,16 @@ export function DraftForm({
     !!existing &&
     (existing.revisionId !== rev.id ||
       (!!existing.decisionId && existing.decisionId !== decision?.id));
-  const draftKey = `reply/${review.id}/${rev.id}/${decision?.id || "review"}/${draftId || "new"}/`;
+  const draftKey = useRef(
+    `reply/${review.id}/${rev.id}/${decision?.id || "review"}/${draftId || "new"}/`,
+  ).current;
+  const [draftContext, setDraftContext] = useDraftState(draftKey + "context", {
+    revisionId: rev.id,
+    decisionId: decision?.id || "",
+  });
+  const contextChanged =
+    draftContext.revisionId !== rev.id ||
+    draftContext.decisionId !== (decision?.id || "");
   const pending = review.findings.filter(
     (f) =>
       f.audience === "submitter" && (f.status === "open" || f.needsRecheck),
@@ -986,6 +995,12 @@ export function DraftForm({
     !historical && !!decision && existing?.decisionId === decision.id,
   );
   async function run(action: ActionInput) {
+    if (contextChanged) {
+      setError(
+        "The package or decision changed. Review and confirm the message against the current context before saving or sharing.",
+      );
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -1046,6 +1061,29 @@ export function DraftForm({
                 review. Saving creates a new draft.
               </span>
             </label>
+          )}
+          {contextChanged && (
+            <div className="rw-warning">
+              <p>
+                The package or recorded decision changed while this message was
+                open. Your text is retained. Check it against version{" "}
+                {rev.number} and the current decision before using it.
+              </p>
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => {
+                  setDraftContext({
+                    revisionId: rev.id,
+                    decisionId: decision?.id || "",
+                  });
+                  setCommunicatesDecision(false);
+                  setError("");
+                }}
+              >
+                I checked the message against the current context
+              </button>
+            </div>
           )}
           {pending.length > 0 && (
             <details className="draft-select" open>
