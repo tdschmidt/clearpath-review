@@ -15,3 +15,8 @@ The submitter’s current request list combines all published batches, using the
 ## Decision versus handoff
 
 An approval or rejection records a review decision, not communication. The queue can now identify a current decision whose handoff is still pending. Sharing that exact result or recording outside communication of a message version explicitly linked to that decision completes the handoff. An unrelated request, a saved draft, or communication about an earlier revision does not count. The link is preserved with each message version; editing a result into an unrelated message cannot silently reuse it.
+
+
+## Returned files and reviewed packages
+
+A response attachment is preserved evidence, not automatically an approved deliverable. A reviewer may explicitly carry a returned file into a new package as creative, destination, or supporting evidence. This reuses the original bytes and requires fresh intake. The normal retain path accepts current components and response attachments, rather than allowing an unrelated historical file to silently reappear in a package.

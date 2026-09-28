@@ -184,7 +184,8 @@ export class WorkflowStore {
       if (c.cancelled) throw new WorkflowError(409, 'This submission has been cancelled. Start a new submission.');
       this.validateOffer(input.offerId, input.product || c.product);
       const retained = input.retainedComponents;
-      if (new Set(retained.map(component => component.assetId)).size !== retained.length || retained.some(component => !c.assets.some(asset => asset.id === component.assetId))) throw new WorkflowError(400, 'Retained attachments must be unique assets from this case.');
+      const availableAssetIds = new Set([...currentRevision(c).components.map(component => component.assetId), ...(c.responses || []).flatMap(response => response.assetIds)]);
+      if (new Set(retained.map(component => component.assetId)).size !== retained.length || retained.some(component => !availableAssetIds.has(component.assetId) || !c.assets.some(asset => asset.id === component.assetId))) throw new WorkflowError(400, 'Retain current package files or explicitly choose response attachments from this case.');
       this.validatePackage(input, files, retained);
       const replacements = input.replacements || files.map(() => null);
       if (replacements.length !== files.length || replacements.filter(Boolean).some(assetId => !currentRevision(c).components.some(component => component.assetId === assetId)) || new Set(replacements.filter(Boolean)).size !== replacements.filter(Boolean).length) throw new WorkflowError(400, 'Choose a different current attachment for each replacement.');

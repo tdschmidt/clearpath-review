@@ -781,3 +781,31 @@ test('decision handoff requires the exact result or an explicitly bound communic
   c = (await h.action(c, { type: 'withdraw_approval', decisionId: c.decisions.at(-1)!.id, reason: 'Withdraw current approval.' })).body;
   assert.equal(pendingDecisionHandoff(c), undefined);
 });
+
+
+test('response attachments enter a review package only through an explicit revision with a chosen role', async t => {
+  const h = await setup(t);
+  const { offerId: _offer, ...input } = base;
+  const receipt = (await h.multipart('/api/submissions', { ...input, fileRoles: ['creative'] }, [{ name: 'creative.png', bytes: png }])).body;
+  let c = (h.app.locals.store.list() as ReviewCase[]).find(item => item.reference === receipt.submission.reference)!;
+  const creativeId = c.assets[0].id;
+  await h.multipart(`/api/submissions/${receipt.token}/responses`, { expectedVersion: c.version, submittedBy: base.submitter, text: 'Here is the rendered destination.', findingIds: [] }, [{ name: 'destination.pdf', bytes: destination }]);
+  c = h.app.locals.store.get(c.id);
+  const response = c.responses![0];
+  const destinationId = response.assetIds[0];
+  assert.equal(currentRevision(c).components.some(component => component.assetId === destinationId), false);
+  assert.equal(c.revisions.length, 1);
+  const adoption = await h.revise(c, { offerId: base.offerId, summary: 'Include the returned destination for review.', retainedComponents: [...currentRevision(c).components, { assetId: destinationId, role: 'destination' }] });
+  assert.equal(adoption.status, 200);
+  c = adoption.body;
+  assert.equal(c.revisions.length, 2);
+  assert.equal(c.assets.length, 2);
+  assert.equal(currentRevision(c).components.find(component => component.assetId === destinationId)?.role, 'destination');
+  assert.equal(c.status, 'needs_intake');
+  assert.equal(c.confirmedRevisionId, null);
+  assert.deepEqual(c.responses![0], response);
+  c = (await h.revise(c, { retainedComponents: [{ assetId: destinationId, role: 'destination' }], fileRoles: ['creative'], replacements: [creativeId] }, [{ name: 'creative.png', bytes: revisedPng }])).body;
+  assert.equal((await h.revise(c, { retainedComponents: [...currentRevision(c).components, { assetId: creativeId, role: 'creative' }] })).status, 400);
+  const { offerId: _offerId, applicabilityReason: _applicability, ...publicRevision } = { submittedBy: base.submitter, summary: 'Do not adopt response through an unrelated retain request.', intendedUse: base.intendedUse, copy: base.copy, destinationUrl: '', fileRoles: [], retainedComponents: [{ assetId: creativeId, role: 'creative' }], expectedVersion: c.version, offerId: base.offerId, applicabilityReason: '' };
+  assert.equal((await h.multipart(`/api/submissions/${receipt.token}/revisions`, publicRevision)).status, 400);
+});
