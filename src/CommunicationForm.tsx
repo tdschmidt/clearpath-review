@@ -18,18 +18,21 @@ export function CommunicationForm({
       version: d.version || 1,
       label: `Draft: ${d.subject} · revision ${review.revisions.find((r) => r.id === d.revisionId)?.number} · message version ${d.version || 1}`,
       body: d.body,
+      decisionId: d.decisionId,
     })),
     ...(review.publishedFeedback || []).map((f) => ({
       id: f.id,
       version: 1,
       label: `Shared feedback: ${f.subject}`,
       body: f.body,
+      decisionId: undefined,
     })),
     ...(review.publishedResults || []).map((r) => ({
       id: r.id,
       version: 1,
       label: `Shared result: ${r.outcome} · revision ${review.revisions.find((v) => v.id === r.revisionId)?.number}`,
       body: r.message,
+      decisionId: r.decisionId,
     })),
   ];
   const [messageId, setMessageId] = useState(messages.at(-1)?.id || "");
@@ -97,6 +100,13 @@ export function CommunicationForm({
               ))}
             </select>
           </Field>
+          {message && (
+            <p className="small-muted">
+              {message.decisionId
+                ? "This exact message is linked to a recorded decision. Recording its outside communication completes that handoff; delivery is not verified."
+                : "This message is not linked to a decision. Recording it will not complete a pending decision handoff."}
+            </p>
+          )}
           {message && (
             <details>
               <summary>Message text</summary>

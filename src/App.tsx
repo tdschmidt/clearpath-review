@@ -51,6 +51,7 @@ import {
   currentRevision,
   openBlockers,
   pendingResponses,
+  pendingDecisionHandoff,
   PRODUCT_LABELS,
   REVIEWER,
   PARTICIPANTS,
@@ -236,7 +237,10 @@ export default function App() {
         return false;
       });
   }
-  const activeCount = cases.filter((c) => !isClosed(c)).length;
+  const activeCount = cases.filter(
+    (c) =>
+      !isClosed(c) || pendingDecisionHandoff(c) || pendingResponses(c).length,
+  ).length;
   return (
     <div className={`app-shell ${selected ? "case-open" : ""}`}>
       <aside className="sidebar">
@@ -534,7 +538,10 @@ function Queue({
     setFilter("active");
     setSearch("");
   }, [page]);
-  const active = cases.filter((c) => !isClosed(c));
+  const active = cases.filter(
+    (c) =>
+      !isClosed(c) || pendingDecisionHandoff(c) || pendingResponses(c).length,
+  );
   const records = cases;
   const rows = records
     .filter(
@@ -542,9 +549,12 @@ function Queue({
         (filter === "all" ||
           (filter === "active"
             ? ["needs_intake", "in_review"].includes(c.status) ||
-              pendingResponses(c).length > 0
+              pendingResponses(c).length > 0 ||
+              !!pendingDecisionHandoff(c)
             : filter === "completed"
-              ? isClosed(c)
+              ? isClosed(c) &&
+                !pendingDecisionHandoff(c) &&
+                !pendingResponses(c).length
               : c.status === filter)) &&
         (owner === "all" || c.owner === owner) &&
         `${c.title} ${c.reference} ${c.submitter} ${PRODUCT_LABELS[c.product]}`
@@ -728,15 +738,17 @@ function Queue({
                       <span className="next-action">
                         {pendingResponses(c).length
                           ? `${pendingResponses(c).length} response${pendingResponses(c).length === 1 ? "" : "s"} to assess`
-                          : isClosed(c)
-                            ? "Decision recorded"
-                            : c.status === "needs_intake"
-                              ? "Confirm submitted package"
-                              : c.status === "waiting"
-                                ? c.waitingReason
-                                : openBlockers(c).length
-                                  ? `${openBlockers(c).length} findings to address`
-                                  : "Review current package"}
+                          : pendingDecisionHandoff(c)
+                            ? "Communicate recorded decision"
+                            : isClosed(c)
+                              ? "Decision recorded"
+                              : c.status === "needs_intake"
+                                ? "Confirm submitted package"
+                                : c.status === "waiting"
+                                  ? c.waitingReason
+                                  : openBlockers(c).length
+                                    ? `${openBlockers(c).length} findings to address`
+                                    : "Review current package"}
                       </span>
                       <span className="table-sub">
                         {[

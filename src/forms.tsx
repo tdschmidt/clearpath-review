@@ -978,6 +978,10 @@ export function DraftForm({
   const decision = review.decisions.findLast(
     (d) => d.revisionId === rev.id && !d.withdrawn,
   );
+  const [communicatesDecision, setCommunicatesDecision] = useDraftState(
+    draftKey + "decision",
+    !historical && !!existing?.decisionId,
+  );
   async function run(action: ActionInput) {
     setBusy(true);
     setError("");
@@ -1014,6 +1018,9 @@ export function DraftForm({
             subject,
             body,
             findingIds: selected,
+            ...(communicatesDecision && decision
+              ? { decisionId: decision.id }
+              : {}),
           });
         }}
       >
@@ -1119,10 +1126,24 @@ export function DraftForm({
                   version {rev.number}
                 </strong>
                 <p>{decision.scope}</p>
+                <label className="check-line">
+                  <input
+                    type="checkbox"
+                    checked={communicatesDecision}
+                    onChange={(e) => setCommunicatesDecision(e.target.checked)}
+                  />
+                  <span>
+                    This message communicates the recorded decision
+                    <small>
+                      Saving links this exact message version to the decision.
+                      Copying it does not record communication.
+                    </small>
+                  </span>
+                </label>
                 <button
                   type="button"
                   className="button secondary"
-                  disabled={busy || !reconciled || !review.submitterToken}
+                  disabled={busy || !reconciled}
                   onClick={() =>
                     void run({
                       type: "publish_result",
@@ -1138,8 +1159,8 @@ export function DraftForm({
           )}
           {!review.submitterToken && (
             <p className="small-muted">
-              Create a submission link in the case before sharing feedback or a
-              result.
+              Sharing creates a submission return link for this case. It does
+              not send an email.
             </p>
           )}
           <ErrorMessage error={error} />

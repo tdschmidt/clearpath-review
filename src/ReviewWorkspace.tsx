@@ -29,6 +29,8 @@ import {
   currentRevision,
   openBlockers,
   pendingResponses,
+  pendingDecisionHandoff,
+  decisionHandoff,
   PRODUCT_LABELS,
   ROLE_LABELS,
   PARTICIPANTS,
@@ -146,6 +148,7 @@ export function ReviewWorkspace({
   const currentDecision = review.decisions.findLast(
     (d) => d.revisionId === rev.id && !d.withdrawn,
   );
+  const handoff = pendingDecisionHandoff(review);
   const selectedDecision = review.decisions.find((d) => d.id === decisionId);
   const missing = [
     !offer && "Select the applicable offer reference",
@@ -401,6 +404,22 @@ export function ReviewWorkspace({
                 Prepare feedback
               </button>
             )}
+          {handoff && (
+            <>
+              <button
+                className="button primary"
+                onClick={() => onDialog("draft")}
+              >
+                Prepare decision message
+              </button>
+              <button
+                className="text-button"
+                onClick={() => onDialog("communication")}
+              >
+                Record outside communication
+              </button>
+            </>
+          )}
           {currentDecision && (
             <button
               className="button secondary"
