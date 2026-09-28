@@ -13,13 +13,22 @@ export function CommunicationForm({
   onClose: () => void;
 }) {
   const messages = [
-    ...review.drafts.map((d) => ({
-      id: d.id,
-      version: d.version || 1,
-      label: `Draft: ${d.subject} · revision ${review.revisions.find((r) => r.id === d.revisionId)?.number} · message version ${d.version || 1}`,
-      body: d.body,
-      decisionId: d.decisionId,
-    })),
+    ...review.drafts.flatMap((d) => [
+      ...(d.previousVersions || []).map((v) => ({
+        id: d.id,
+        version: v.version,
+        label: `Earlier draft: ${v.subject} · revision ${review.revisions.find((r) => r.id === d.revisionId)?.number} · message version ${v.version}`,
+        body: v.body,
+        decisionId: v.decisionId,
+      })),
+      {
+        id: d.id,
+        version: d.version || 1,
+        label: `Draft: ${d.subject} · revision ${review.revisions.find((r) => r.id === d.revisionId)?.number} · message version ${d.version || 1}`,
+        body: d.body,
+        decisionId: d.decisionId,
+      },
+    ]),
     ...(review.publishedFeedback || []).map((f) => ({
       id: f.id,
       version: 1,
@@ -35,7 +44,11 @@ export function CommunicationForm({
       decisionId: r.decisionId,
     })),
   ];
-  const [messageId, setMessageId] = useState(messages.at(-1)?.id || "");
+  const keyFor = (message: { id: string; version: number }) =>
+    `${message.id}:${message.version}`;
+  const [messageKey, setMessageKey] = useState(
+    messages.length ? keyFor(messages.at(-1)!) : "",
+  );
   const [recipient, setRecipient] = useState(
     review.submitterEmail || review.submitter,
   );
@@ -48,7 +61,7 @@ export function CommunicationForm({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const message = messages.find((m) => m.id === messageId);
+  const message = messages.find((m) => keyFor(m) === messageKey);
   return (
     <Modal
       title="Record outside communication"
@@ -65,7 +78,7 @@ export function CommunicationForm({
           try {
             await onAction({
               type: "record_communication",
-              messageId,
+              messageId: message.id,
               messageVersion: message.version,
               recipient,
               channel,
@@ -90,11 +103,14 @@ export function CommunicationForm({
           <Field label="Message">
             <select
               required
-              value={messageId}
-              onChange={(e) => setMessageId(e.target.value)}
+              value={messageKey}
+              onChange={(e) => setMessageKey(e.target.value)}
             >
+              {!message && (
+                <option value="">Choose an exact message version</option>
+              )}
               {messages.map((m) => (
-                <option key={m.id} value={m.id}>
+                <option key={keyFor(m)} value={keyFor(m)}>
                   {m.label}
                 </option>
               ))}

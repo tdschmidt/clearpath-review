@@ -946,8 +946,14 @@ export function DraftForm({
 }: ActionProps & { draftId?: string }) {
   const rev = currentRevision(review);
   const existing = review.drafts.find((d) => d.id === draftId);
-  const historical = !!existing && existing.revisionId !== rev.id;
-  const draftKey = `reply/${review.id}/${draftId || "new"}/`;
+  const decision = review.decisions.findLast(
+    (d) => d.revisionId === rev.id && !d.withdrawn,
+  );
+  const historical =
+    !!existing &&
+    (existing.revisionId !== rev.id ||
+      (!!existing.decisionId && existing.decisionId !== decision?.id));
+  const draftKey = `reply/${review.id}/${rev.id}/${decision?.id || "review"}/${draftId || "new"}/`;
   const pending = review.findings.filter(
     (f) =>
       f.audience === "submitter" && (f.status === "open" || f.needsRecheck),
@@ -975,12 +981,9 @@ export function DraftForm({
     [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [reconciled, setReconciled] = useState(!historical);
-  const decision = review.decisions.findLast(
-    (d) => d.revisionId === rev.id && !d.withdrawn,
-  );
   const [communicatesDecision, setCommunicatesDecision] = useDraftState(
     draftKey + "decision",
-    !historical && !!existing?.decisionId,
+    !historical && !!decision && existing?.decisionId === decision.id,
   );
   async function run(action: ActionInput) {
     setBusy(true);
@@ -1038,8 +1041,9 @@ export function DraftForm({
                 onChange={(e) => setReconciled(e.target.checked)}
               />
               <span>
-                This text came from an earlier version. I have checked and
-                updated it for version {rev.number}. Saving creates a new draft.
+                This text came from an earlier package or decision. I have
+                checked and updated it for version {rev.number} and the current
+                review. Saving creates a new draft.
               </span>
             </label>
           )}
