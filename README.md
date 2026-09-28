@@ -2,11 +2,11 @@
 
 A working review loop for a fictional consumer-finance company: submit marketing, inspect material and supporting facts, request corrections, review the response, and record and share a decision about an exact version.
 
-**[Open the reviewer workspace](https://award-harrison-explore-messaging.trycloudflare.com)** · **[Submit material](https://award-harrison-explore-messaging.trycloudflare.com/submit)** · [Private repository](https://github.com/tdschmidt/clearpath-review)
+**[Open the reviewer workspace](https://award-harrison-explore-messaging.trycloudflare.com)** · **[Submit material](https://award-harrison-explore-messaging.trycloudflare.com/submit)** · [GitHub repository](https://github.com/tdschmidt/clearpath-review)
 
 **Start here:** [one-page product rationale (PDF)](output/pdf/clearpath-product-one-pager.pdf) · [Why these regulatory details shaped the design](docs/regulatory-design-basis.md)
 
-This is an unauthenticated demonstration. Use fictional material only. The Mac, server, and tunnel must remain running; restarting the tunnel changes the temporary URL. The GitHub repository is private, so the reviewer needs access separately.
+This is an unauthenticated demonstration. Use fictional material only. The repository is public on Theo Schmidt's personal GitHub account; no invitation is needed. The live demo runs on a Mac through a temporary Cloudflare tunnel. The Mac must stay awake and online with the server and tunnel running; restarting the tunnel generates a new URL. The code and documentation remain accessible on GitHub when the Mac is off.
 
 ## Five-minute tour: try both sides
 
@@ -68,6 +68,8 @@ cloudflared tunnel --url http://localhost:3000
 ```
 
 The current local binary is `data/tools/cloudflared`; it is ignored and not part of a fresh clone. An installed/configured ngrok can also expose port 3000.
+
+For a review using the current link, keep the Mac plugged in, the lid open, and both running processes alive. The website does not need to stay open in a browser. `caffeinate -i` in a separate Terminal prevents idle sleep while that command runs; stop it with Ctrl-C afterward. It does not keep the site available through shutdown, loss of internet, or stopped server/tunnel processes. Hosting the app and persistent data on a separate server would remove the Mac dependency.
 
 ## Verification
 
