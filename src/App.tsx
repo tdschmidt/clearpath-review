@@ -1,25 +1,20 @@
 import { useEffect, useState } from "react";
 import {
   ArrowDownToLine,
-  ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   BookOpen,
   Check,
   CheckCircle2,
-  ChevronDown,
   ChevronRight,
   CircleHelp,
-  Clock3,
   CreditCard,
   FileCheck2,
   FileText,
   FolderOpen,
-  History,
   Inbox,
   LayoutList,
   LoaderCircle,
-  MessageSquare,
   Plus,
   RefreshCw,
   Search,
@@ -29,35 +24,27 @@ import {
 } from "lucide-react";
 import { api, ApiError, json } from "./api";
 import {
-  AssetViewer,
   date,
-  dateTime,
   Empty,
   ErrorMessage,
-  initials,
   Modal,
   Status,
 } from "./components";
 import {
   DecisionForm,
   DraftForm,
-  Field,
   SubmissionForm,
   WaitingForm,
   type ActionInput,
 } from "./forms";
 import {
-  assetUrl,
   currentRevision,
   openBlockers,
   pendingResponses,
   pendingDecisionHandoff,
   PRODUCT_LABELS,
   REVIEWER,
-  ROLE_LABELS,
-  type Finding,
   type Offer,
-  type PackageRevision,
   type ReviewCase,
 } from "../shared/types";
 
@@ -83,12 +70,6 @@ const isClosed = (c: ReviewCase) =>
   c.status === "approved" ||
   c.status === "rejected" ||
   c.status === "cancelled";
-const findingNames = {
-  correction: "Correction",
-  evidence: "Evidence request",
-  question: "Specialist question",
-};
-
 export default function App() {
   useUnsavedWarning();
   const actorId = "maya";

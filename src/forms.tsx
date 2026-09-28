@@ -8,14 +8,10 @@ import {
 import {
   AlertCircle,
   ArrowRight,
-  Check,
   CheckCircle2,
-  Copy,
-  Download,
   FileUp,
   FolderOpen,
   LoaderCircle,
-  Plus,
   ShieldCheck,
   X,
 } from "lucide-react";
@@ -29,17 +25,13 @@ import {
   openBlockers,
   PRODUCT_LABELS,
   REVIEWER,
-  PARTICIPANTS,
   ROLE_LABELS,
   type AssetRole,
   type CaseAction,
-  type Finding,
-  type FindingInput,
   type Offer,
   type Product,
   type ReviewCase,
   type RevisionInput,
-  type SubmissionInput,
 } from "../shared/types";
 
 export type ActionInput = CaseAction extends infer A
