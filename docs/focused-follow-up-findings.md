@@ -36,6 +36,8 @@ The first two behaviors were reproduced using fictional records in an isolated d
 
 **Research-backed opportunity, not a reproduced approval bug:** structured context contains a launch date but no campaign end date. The reference-date check compares only that launch date. A campaign can start during an offer's valid period and continue afterward; its duration can currently be recorded only in free text and decision scope.
 
+The subsequent [scope refinement](compliance-review-follow-up.md) explicitly prompts for run dates in those existing fields. A structured run period, mismatch handling, or expiration control is still unimplemented.
+
 [Affirm requests an expected end date and promotion start/end details](https://businesshub.affirm.com/hc/en-us/articles/6402545332628-Submitting-Custom-Marketing-Assets-to-Affirm). [Regulation Z §1026.24(a)](https://www.consumerfinance.gov/rules-policy/regulations/1026/24/) requires covered advertised terms to be actually available and recognizes limited-period offers. These support asking about timing, not automatically treating a date mismatch as a violation.
 
 **Smallest useful change:** for a limited promotion, capture intended end date or explicitly unknown/open-ended use, preserve it with the package and decision, and surface a mismatch with the recorded offer period for human consideration. Do not imply that the application stops campaigns or certifies offer availability. This is a more defensible later addition than generic mandatory fields for every submission.

@@ -4,7 +4,7 @@ A marketing-approval workspace for a fictional consumer-finance company, with a 
 
 **[Reviewer workspace](https://award-harrison-explore-messaging.trycloudflare.com)** · **[Submit material](https://award-harrison-explore-messaging.trycloudflare.com/submit)** · [Private GitHub repository](https://github.com/tdschmidt/clearpath-review)
 
-The production build, **32 API tests**, and **19 browser workflow tests** pass. The updated public workspace, submission page, source preview, API, originals, and ZIP download were verified on September 27, 2026. This temporary URL works while the Mac, server, and tunnel stay running; restarting the tunnel creates a new URL.
+The production build, **33 API tests**, and **19 browser workflow tests** pass. The updated public workspace, submission page, source preview, API, originals, and ZIP download were verified on September 27, 2026. This temporary URL works while the Mac, server, and tunnel stay running; restarting the tunnel creates a new URL.
 
 Start with [what we built and why](docs/delivery-rundown.md) for the working product, audit changes, stakeholders, and deliberate limits. The [regulatory design basis](docs/regulatory-design-basis.md) maps specific sources to implemented choices and distinguishes legal requirements from product judgment. The [original product story](docs/product-story.md) reconstructs the process and bottleneck hypothesis; [research and alternatives](docs/research.md) and [submission-format evidence](docs/submission-format-research.md) provide supporting detail.
 
@@ -12,7 +12,7 @@ The [automated-review decision](docs/research.md#decision-defer-automated-substa
 
 The [audit resolution](docs/audit-resolution.md) separates working features from remaining demo boundaries. The [first implementation decisions](docs/implementation-decisions.md), [core workflow decisions](docs/core-workflow-decisions.md), [reviewer decisions](docs/reviewer-workflow-decisions.md), and [affiliate decisions](docs/external-workflow-decisions.md) connect focused commits to observed problems.
 
-The latest [approval-sharing decision](docs/approval-sharing-decision.md) explains the guard for an earlier approval whose reference was withdrawn. [Further findings](docs/focused-follow-up-findings.md) distinguish reproduced gaps from proposed product additions; those recommendations are not implemented features.
+The latest [approval-sharing decision](docs/approval-sharing-decision.md) explains why a withdrawn source requires fresh review before another approval can be shared. The [compliance-review follow-up](docs/compliance-review-follow-up.md) covers the card example's required disclosure finding and clearer scope prompts. [Further findings](docs/focused-follow-up-findings.md) distinguish reproduced gaps from proposed product additions; those recommendations are not implemented features.
 
 ## Current scope
 
@@ -64,8 +64,10 @@ npm run build
 npm run test:e2e
 ```
 
-The final build and **32 API / 19 browser tests** passed on September 27, 2026. Checks cover actual image/PDF uploads, exact source-page citations, partial corrections, server approval gates, private-field exclusion, frozen shared feedback, draft recovery, stale decision acknowledgment, reference versioning, withdrawal, and ZIP contents/download. Added regressions exercise returned evidence in a waiting case, request lists across feedback batches, changed-reference rechecks, internal and external draft conflicts, explicit inclusion of response files, decision communication bound to an exact message version, and reference withdrawal while an approval reply is open.
+The final build and **33 API / 19 browser tests** passed on September 27, 2026. Checks cover actual image/PDF uploads, exact source-page citations, partial corrections, server approval gates, private-field exclusion, frozen shared feedback, draft recovery, stale decision acknowledgment, reference versioning, withdrawal, and ZIP contents/download. Added regressions exercise returned evidence in a waiting case, request lists across feedback batches, changed-reference rechecks, internal and external draft conflicts, explicit inclusion of response files, decision communication bound to an exact message version, withdrawal during an open reply with fresh-review recovery, and the card example's required disclosure finding.
 
 A migration rehearsal preserved all four existing live cases and verified all seven original files by SHA-256. The subsequent core-fix deployment left all four case records byte-for-byte unchanged and verified all seven submitted originals plus three reference originals against their stored hashes. The public queue, submission form, adjacent source preview, current build, API, originals, references, and ZIP download were checked again. These are workflow checks, not legal-accuracy measurements, authenticated access controls, or proof of time savings.
+
+The latest refinement added one required finding to the existing card sample through the normal API. Its original package, notes, and previous history were preserved; the other three cases and all three references remained unchanged. All ten stored originals still match their pre-deployment hashes. The public build and new finding were checked again after restarting the server.
 
 Browser tests use a separate server on port 3101 and temporary data. They use Playwright Chromium, falling back to system Chrome on macOS when available; otherwise run `npx playwright install chromium`. Build first so browser tests exercise the current frontend.
