@@ -73,13 +73,11 @@ test("internal stale revision keeps edits and uploads while adopting untouched c
   await dialog
     .getByRole("textbox", { name: "Revision note", exact: true })
     .fill("My actual revision note.");
-  await dialog
-    .locator("input[type=file][multiple]")
-    .setInputFiles({
-      name: "local-proof.pdf",
-      mimeType: "application/pdf",
-      buffer: readFileSync("public/fixtures/offers/personal-loan.pdf"),
-    });
+  await dialog.locator("input[type=file][multiple]").setInputFiles({
+    name: "local-proof.pdf",
+    mimeType: "application/pdf",
+    buffer: readFileSync("public/fixtures/offers/personal-loan.pdf"),
+  });
   await dialog
     .getByLabel("Role for local-proof.pdf", { exact: true })
     .selectOption("evidence");
@@ -138,13 +136,11 @@ test("an attachment-only internal draft detects a newer package after closing an
   await page.goto(`/#review/${c.id}`);
   await page.getByRole("button", { name: "Add revision", exact: true }).click();
   let dialog = page.getByRole("dialog", { name: "Submit an updated package" });
-  await dialog
-    .locator("input[type=file][multiple]")
-    .setInputFiles({
-      name: "kept-upload.pdf",
-      mimeType: "application/pdf",
-      buffer: readFileSync("public/fixtures/offers/personal-loan.pdf"),
-    });
+  await dialog.locator("input[type=file][multiple]").setInputFiles({
+    name: "kept-upload.pdf",
+    mimeType: "application/pdf",
+    buffer: readFileSync("public/fixtures/offers/personal-loan.pdf"),
+  });
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await concurrentRevision(request, c.id);
   await page
@@ -230,4 +226,84 @@ test("conflicting internal copy requires an explicit choice instead of overwriti
   ).json();
   expect(saved.revisions.at(-1)?.copy).toBe("My deliberately edited caption.");
   expect(saved.revisions.at(-1)?.components).toHaveLength(2);
+});
+
+test("a returned file joins a package only after explicit inclusion and role selection", async ({
+  page,
+  request,
+}) => {
+  let c = await createCase(request, "Returned destination adoption");
+  const linkResponse = await request.post(`/api/cases/${c.id}/actions`, {
+    data: { type: "create_submitter_link", expectedVersion: c.version },
+  });
+  expect(linkResponse.ok()).toBeTruthy();
+  c = await linkResponse.json();
+  const returned = await request.post(
+    `/api/submissions/${c.submitterToken}/responses`,
+    {
+      multipart: {
+        payload: JSON.stringify({
+          expectedVersion: c.version,
+          submittedBy: "Affiliate editor",
+          text: "Here is the destination rendition.",
+          findingIds: [],
+        }),
+        files: {
+          name: "returned-destination.pdf",
+          mimeType: "application/pdf",
+          buffer: readFileSync("public/fixtures/loan/v3/destination.pdf"),
+        },
+      },
+    },
+  );
+  expect(returned.ok(), await returned.text()).toBeTruthy();
+  c = await (await request.get(`/api/cases/${c.id}`)).json();
+  const intake = await request.post(`/api/cases/${c.id}/actions`, {
+    data: { type: "confirm_intake", expectedVersion: c.version },
+  });
+  expect(intake.ok(), await intake.text()).toBeTruthy();
+  c = await intake.json();
+  expect(c.status).toBe("in_review");
+  const responseAssetId = c.responses!.at(-1)!.assetIds[0];
+  expect(
+    c.revisions
+      .at(-1)!
+      .components.some((item) => item.assetId === responseAssetId),
+  ).toBeFalsy();
+  await page.goto(`/#review/${c.id}`);
+  await page.getByRole("button", { name: "Add revision", exact: true }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "Submit an updated package",
+  });
+  const include = dialog.getByRole("checkbox", {
+    name: /Include returned-destination.pdf in new version/,
+  });
+  await expect(include).not.toBeChecked();
+  await expect(
+    dialog.getByLabel("Role for returned returned-destination.pdf", {
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await include.check();
+  await dialog
+    .getByLabel("Role for returned returned-destination.pdf", { exact: true })
+    .selectOption("destination");
+  await dialog
+    .getByRole("textbox", { name: "Revision note", exact: true })
+    .fill("Include the returned destination for review.");
+  await dialog
+    .getByRole("button", { name: "Save new version", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  const saved: ReviewCase = await (
+    await request.get(`/api/cases/${c.id}`)
+  ).json();
+  expect(saved.assets).toHaveLength(c.assets.length);
+  expect(saved.revisions).toHaveLength(2);
+  expect(saved.revisions.at(-1)!.components).toContainEqual({
+    assetId: responseAssetId,
+    role: "destination",
+  });
+  expect(saved.revisions[0].components).toHaveLength(1);
+  expect(saved.status).toBe("needs_intake");
 });

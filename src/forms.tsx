@@ -25,6 +25,7 @@ import { usePackageDraft, type DraftChoice } from "./submitter-drafts";
 import { bytes, ErrorMessage, Modal } from "./components";
 import {
   currentRevision,
+  assetUrl,
   openBlockers,
   PRODUCT_LABELS,
   REVIEWER,
@@ -148,6 +149,16 @@ export function SubmissionForm({
     },
     true,
   );
+  const responseAssets =
+    existing?.assets.filter(
+      (asset) =>
+        !previous?.components.some(
+          (component) => component.assetId === asset.id,
+        ) &&
+        existing.responses?.some((response) =>
+          response.assetIds.includes(asset.id),
+        ),
+    ) || [];
   const files = materials.files;
   const retained = materials.retained;
   const setFiles = (
@@ -704,9 +715,7 @@ export function SubmissionForm({
                               retained.find((c) => c.assetId === comp.assetId)
                                 ?.role || comp.role;
                             setFiles((old) => [
-                              ...old.filter(
-                                (f) => f.replaces !== comp.assetId,
-                              ),
+                              ...old.filter((f) => f.replaces !== comp.assetId),
                               { file, role, replaces: comp.assetId },
                             ]);
                             setRetained((old) =>
@@ -720,9 +729,83 @@ export function SubmissionForm({
                   );
                 })}
                 <small>
-                  Replacing removes the earlier file from this version only.
-                  All originals remain in history.
+                  Replacing removes the earlier file from this version only. All
+                  originals remain in history.
                 </small>
+              </div>
+            )}
+            {responseAssets.length > 0 && (
+              <div className="retained-files">
+                <h4>Files returned in responses</h4>
+                <p>
+                  Include a returned file only if it belongs in this package.
+                  Select its role; saving creates a new version for intake.
+                </p>
+                {responseAssets.map((asset) => {
+                  const component = retained.find(
+                    (item) => item.assetId === asset.id,
+                  );
+                  const response = existing!.responses!.find((item) =>
+                    item.assetIds.includes(asset.id),
+                  )!;
+                  return (
+                    <div className="retain-row" key={asset.id}>
+                      <label className="check-line">
+                        <input
+                          type="checkbox"
+                          checked={!!component}
+                          onChange={(event) =>
+                            setRetained((old) =>
+                              event.target.checked
+                                ? [
+                                    ...old,
+                                    { assetId: asset.id, role: "evidence" },
+                                  ]
+                                : old.filter(
+                                    (item) => item.assetId !== asset.id,
+                                  ),
+                            )
+                          }
+                        />
+                        <span>
+                          Include {asset.name} in new version
+                          <small>Returned by {response.author}</small>
+                        </span>
+                      </label>
+                      <a
+                        className="text-button"
+                        href={assetUrl(existing!.id, asset.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open file
+                      </a>
+                      <select
+                        aria-label={`Role for returned ${asset.name}`}
+                        disabled={!component}
+                        value={component?.role || "evidence"}
+                        onChange={(event) =>
+                          setRetained((old) =>
+                            old.map((item) =>
+                              item.assetId === asset.id
+                                ? {
+                                    ...item,
+                                    role: event.target.value as AssetRole,
+                                  }
+                                : item,
+                            ),
+                          )
+                        }
+                      >
+                        {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                          <option key={role} value={role}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
               </div>
             )}
             <div

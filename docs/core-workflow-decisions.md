@@ -19,7 +19,7 @@ An approval or rejection records a review decision, not communication. The queue
 
 ## Returned files and reviewed packages
 
-A response attachment is preserved evidence, not automatically an approved deliverable. A reviewer may explicitly carry a returned file into a new package as creative, destination, or supporting evidence. This reuses the original bytes and requires fresh intake. The normal retain path accepts current components and response attachments, rather than allowing an unrelated historical file to silently reappear in a package.
+A response attachment is preserved evidence, not automatically an approved deliverable. A reviewer may explicitly carry a returned file into a new package as creative, destination, or supporting evidence. The internal revision form lists these files separately, unchecked, with an explicit include control and role picker. This reuses the original bytes and requires fresh intake. The normal retain path accepts current components and response attachments, rather than allowing an unrelated historical file to silently reappear in a package.
 
 
 ## Internal revision drafts
