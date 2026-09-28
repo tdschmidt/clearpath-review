@@ -378,6 +378,119 @@
 .partner-feedback-items p {
   margin-top: 10px;
 }
+.partner-request-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+.partner-latest-message {
+  border-left: 3px solid #d8e2d2;
+  padding: 12px 16px 1px;
+  margin-top: 18px;
+  background: #fafcf7;
+}
+.partner-latest-message > small {
+  display: block;
+  margin-top: 6px;
+  color: #60725f;
+  font-size: 12px;
+}
+.partner-request {
+  border: 1px solid #d8e2d2;
+  border-radius: 8px;
+  padding: 20px;
+}
+.partner-request-meta,
+.partner-request-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+.partner-request-meta {
+  flex-wrap: wrap;
+}
+.partner-request-meta small,
+.partner-request-location {
+  color: #60725f;
+  font-size: 12px;
+}
+.partner-request h3 {
+  font-size: 17px;
+  margin: 14px 0 6px;
+}
+.partner-request-footer {
+  margin-top: 18px;
+  border-top: 1px solid #e2e9dd;
+  padding-top: 16px;
+}
+.partner-request-footer strong {
+  font-size: 13px;
+}
+.partner-request-footer small {
+  display: block;
+  color: #60725f;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.partner-request-footer button {
+  flex-shrink: 0;
+}
+.partner-request-response_received {
+  border-left: 3px solid #b68b42;
+}
+.partner-request-accepted,
+.partner-request-no_longer_required {
+  background: #f7faf4;
+}
+.partner-request-citations {
+  display: grid;
+  gap: 10px;
+}
+.partner-request-citations a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.partner-request-citations small {
+  display: block;
+  color: #60725f;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.partner-feedback-history > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+}
+.partner-feedback-history > p,
+.partner-selected-requests {
+  color: #60725f;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.partner-feedback-history .partner-card {
+  box-shadow: none;
+  margin: 20px 0 0;
+}
+.partner-reviewer-acknowledgment {
+  margin-top: 16px;
+  background: #f3f7ef;
+  border-left: 3px solid #809472;
+  padding: 14px 16px;
+}
+@media (max-width: 640px) {
+  .partner-request {
+    padding: 16px;
+  }
+  .partner-request-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
 .partner-message {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

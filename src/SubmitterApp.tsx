@@ -27,6 +27,7 @@ import {
   submitterAssetUrl,
   type AssetRole,
   type Product,
+  type MaterialCitation,
   type SubmitterCase,
   type SubmitterReceipt,
 } from "../shared/types";
@@ -260,6 +261,10 @@ export default function SubmitterApp() {
   const [revisionOpen, setRevisionOpen] = useState(false);
   const [revisionStarted, setRevisionStarted] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [replyTarget, setReplyTarget] = useState<{
+    findingId: string;
+    sequence: number;
+  } | null>(null);
   async function refresh() {
     if (!token) return;
     setError("");
@@ -420,7 +425,16 @@ export default function SubmitterApp() {
                   </section>
                 )}
                 <PublishedResults submission={submission} token={token} />
-                <Feedback submission={submission} />
+                <CurrentRequests
+                  submission={submission}
+                  token={token}
+                  onRespond={(findingId) =>
+                    setReplyTarget((old) => ({
+                      findingId,
+                      sequence: (old?.sequence || 0) + 1,
+                    }))
+                  }
+                />
                 {submission.status === "received" &&
                   !submission.feedback.length && (
                     <section className="partner-card partner-next-step">
@@ -456,6 +470,7 @@ export default function SubmitterApp() {
                       token={token}
                       submission={submission}
                       onSaved={setSubmission}
+                      replyTarget={replyTarget}
                     />
                     {submission.revisions.length > 0 && (
                       <div className="partner-revision-action">
@@ -500,6 +515,7 @@ export default function SubmitterApp() {
                     />
                   </div>
                 )}
+                <Feedback submission={submission} />
                 <SubmissionHistory submission={submission} token={token} />
               </>
             )}
@@ -1146,13 +1162,225 @@ function PackageForm({
   );
 }
 
+function CitedMaterial({
+  citations,
+  submission,
+  token,
+}: {
+  citations?: MaterialCitation[];
+  submission: SubmitterCase;
+  token: string;
+}) {
+  if (!citations?.length) return null;
+  return (
+    <div className="partner-request-citations" aria-label="Cited material">
+      {citations.map((citation, index) => {
+        const asset = submission.assets.find(
+          (item) => item.id === citation.assetId,
+        );
+        const revision = submission.revisions.find(
+          (item) => item.id === citation.revisionId,
+        );
+        if (!asset || !revision) return null;
+        return (
+          <div key={`${citation.assetId}-${citation.page || 0}-${index}`}>
+            <a
+              href={`${submitterAssetUrl(token, asset.id)}${citation.page ? `#page=${citation.page}` : ""}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <FileText size={15} />
+              {asset.name} · version {revision.number}
+              {citation.page ? ` · page ${citation.page}` : ""}
+            </a>
+            {citation.note && <small>{citation.note}</small>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CurrentRequests({
+  submission,
+  token,
+  onRespond,
+}: {
+  submission: SubmitterCase;
+  token: string;
+  onRespond: (findingId: string) => void;
+}) {
+  const requests = submission.sharedRequests || [];
+  const latestMessage = submission.feedback.at(-1);
+  if (!requests.length && !latestMessage) return null;
+  const current = submission.revisions.at(-1);
+  const currentResult = submission.results.findLast(
+    (result) => result.revisionId === current?.id,
+  );
+  const order = {
+    open: 0,
+    response_received: 1,
+    accepted: 2,
+    no_longer_required: 2,
+  };
+  const sorted = [...requests].sort(
+    (a, b) =>
+      order[a.status] - order[b.status] ||
+      Number(b.material) - Number(a.material) ||
+      a.number - b.number,
+  );
+  return (
+    <section
+      className="partner-card partner-current-requests"
+      aria-labelledby="current-requests-heading"
+    >
+      <div className="partner-section-heading">
+        <div>
+          <h2 id="current-requests-heading">
+            {requests.length
+              ? "Requests from the reviewer"
+              : "Latest message from the reviewer"}
+          </h2>
+          <p>
+            All requests shared in this review, with their latest shared
+            updates. Sending a response does not resolve a request.
+          </p>
+        </div>
+      </div>
+      {latestMessage && (
+        <div className="partner-latest-message">
+          <strong>{latestMessage.subject}</strong>
+          <small>
+            Shared {dateTime(latestMessage.createdAt)} · version{" "}
+            {submission.revisions.find(
+              (revision) => revision.id === latestMessage.revisionId,
+            )?.number || "not yet shared"}
+          </small>
+          <p className="partner-message">{latestMessage.body}</p>
+        </div>
+      )}
+      {currentResult && (
+        <p className="partner-draft-note">
+          Refer to the decision above for permission to use this version. These
+          are the reviewer’s latest shared request updates.
+        </p>
+      )}
+      <div className="partner-request-list">
+        {sorted.map((request) => {
+          const label = `F${String(request.number).padStart(2, "0")}`;
+          const origin = submission.revisions.find(
+            (revision) => revision.id === request.revisionId,
+          );
+          const statusRevision = submission.revisions.find(
+            (revision) => revision.id === request.statusRevisionId,
+          );
+          const status =
+            request.status === "accepted"
+              ? "Accepted by reviewer"
+              : request.status === "no_longer_required"
+                ? "No longer required"
+                : request.status === "response_received"
+                  ? "Response received · awaiting reviewer assessment"
+                  : request.material
+                    ? "Action requested"
+                    : "Advice available";
+          return (
+            <article
+              key={request.findingId}
+              aria-label={`${label}: ${request.title}`}
+              className={`partner-request partner-request-${request.status}`}
+            >
+              <div className="partner-request-meta">
+                <span
+                  className={`partner-tag ${request.material ? "required" : ""}`}
+                >
+                  {request.material ? "Required change or evidence" : "Advice"}
+                </span>
+                <small>
+                  {label} · shared {date(request.sharedAt)}
+                  {origin ? ` · version ${origin.number}` : ""}
+                </small>
+              </div>
+              <h3>{request.title}</h3>
+              {request.location && (
+                <p className="partner-request-location">{request.location}</p>
+              )}
+              <p className="partner-message">{request.request}</p>
+              <CitedMaterial
+                citations={request.citations}
+                submission={submission}
+                token={token}
+              />
+              <div className="partner-request-footer">
+                <div>
+                  <strong>
+                    {status}
+                    {(request.status === "accepted" ||
+                      request.status === "no_longer_required") &&
+                    statusRevision
+                      ? ` · version ${statusRevision.number}`
+                      : ""}
+                  </strong>
+                  {request.pendingResponseCount > 1 && (
+                    <small>
+                      {request.pendingResponseCount} responses awaiting
+                      assessment
+                    </small>
+                  )}
+                  {request.statusRevisionId &&
+                    request.statusRevisionId !== current?.id &&
+                    request.status !== "accepted" &&
+                    request.status !== "no_longer_required" && (
+                      <small>
+                        The earlier request update covered version{" "}
+                        {statusRevision?.number || "previous"}. Version{" "}
+                        {current?.number} still needs assessment.
+                      </small>
+                    )}
+                  {!request.statusRevisionId &&
+                    origin &&
+                    origin.id !== current?.id && (
+                      <small>
+                        Originally shared for version {origin.number}. No
+                        acceptance has been shared for version {current?.number}
+                        .
+                      </small>
+                    )}
+                </div>
+                {submission.status !== "cancelled" && (
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => onRespond(request.findingId)}
+                  >
+                    <MessageSquare size={15} />
+                    Respond to {label}
+                  </button>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function Feedback({ submission }: { submission: SubmitterCase }) {
   const current = submission.revisions.at(-1);
   const currentResult = submission.results.findLast(
     (result) => result.revisionId === current?.id,
   );
+  if (!submission.feedback.length) return null;
   return (
-    <>
+    <details className="partner-card partner-feedback-history">
+      <summary>
+        Feedback history · {submission.feedback.length} shared{" "}
+        {submission.feedback.length === 1 ? "message" : "messages"}
+      </summary>
+      <p>
+        Messages as originally shared. Current request updates appear above.
+      </p>
       {[...submission.feedback].reverse().map((feedback, index) => (
         <section className="partner-card" key={feedback.id}>
           <div className="partner-section-heading">
@@ -1202,7 +1430,7 @@ function Feedback({ submission }: { submission: SubmitterCase }) {
           )}
         </section>
       ))}
-    </>
+    </details>
   );
 }
 function PublishedResults({
@@ -1285,10 +1513,12 @@ function ResponseForm({
   token,
   submission,
   onSaved,
+  replyTarget,
 }: {
   token: string;
   submission: SubmitterCase;
   onSaved: (submission: SubmitterCase) => void;
+  replyTarget: { findingId: string; sequence: number } | null;
 }) {
   const draft = useTextDraft(`clearpath:response:${token}`, {
     text: "",
@@ -1300,7 +1530,19 @@ function ResponseForm({
     [busy, setBusy] = useState(false),
     [success, setSuccess] = useState(false);
   const retry = useRef({ signature: "", key: crypto.randomUUID() });
-  const feedback = submission.feedback.at(-1);
+  const textArea = useRef<HTMLTextAreaElement>(null);
+  const requests = submission.sharedRequests || [];
+  useEffect(() => {
+    if (!replyTarget) return;
+    setSelected((old) =>
+      old.includes(replyTarget.findingId)
+        ? old
+        : [...old, replyTarget.findingId],
+    );
+    setSuccess(false);
+    textArea.current?.focus();
+    textArea.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [replyTarget]);
   useLeaveWarning(draft.dirty || files.length > 0);
   return (
     <form
@@ -1346,6 +1588,7 @@ function ResponseForm({
       <fieldset disabled={busy}>
         <Field label="Your response">
           <textarea
+            ref={textArea}
             required
             rows={3}
             maxLength={5000}
@@ -1357,28 +1600,43 @@ function ResponseForm({
             placeholder="Answer a question or explain the evidence you are providing."
           />
         </Field>
-        {feedback && feedback.findings.length > 0 && (
+        {requests.length > 0 && (
           <details className="partner-response-selection">
             <summary>
               Link this response to feedback · {selected.length} selected
             </summary>
-            {feedback.findings.map((f) => (
-              <label className="check-line" key={f.id}>
+            {requests.map((f) => (
+              <label className="check-line" key={f.findingId}>
                 <input
                   type="checkbox"
-                  checked={selected.includes(f.id)}
+                  checked={selected.includes(f.findingId)}
                   onChange={() =>
                     setSelected((old) =>
-                      old.includes(f.id)
-                        ? old.filter((id) => id !== f.id)
-                        : [...old, f.id],
+                      old.includes(f.findingId)
+                        ? old.filter((id) => id !== f.findingId)
+                        : [...old, f.findingId],
                     )
                   }
                 />
-                <span>{f.title}</span>
+                <span>
+                  F{String(f.number).padStart(2, "0")} · {f.title}
+                </span>
               </label>
             ))}
           </details>
+        )}
+        {selected.length > 0 && (
+          <p className="partner-selected-requests">
+            Replying to{" "}
+            {requests
+              .filter((request) => selected.includes(request.findingId))
+              .map(
+                (request) =>
+                  `F${String(request.number).padStart(2, "0")} · ${request.title}`,
+              )
+              .join("; ")}
+            . Use “Link this response to feedback” to change the selection.
+          </p>
         )}
         <div className="form-grid">
           <Field label="Responding as">
@@ -1549,6 +1807,21 @@ function SubmissionHistory({
                 <small>{dateTime(response.createdAt)}</small>
               </strong>
               <p className="partner-message">{response.text}</p>
+              {response.findingIds.length > 0 && (
+                <small>
+                  Linked to{" "}
+                  {response.findingIds
+                    .map((id) => {
+                      const request = submission.sharedRequests?.find(
+                        (item) => item.findingId === id,
+                      );
+                      return request
+                        ? `F${String(request.number).padStart(2, "0")} · ${request.title}`
+                        : "a shared request";
+                    })
+                    .join("; ")}
+                </small>
+              )}
               <div className="partner-file-links">
                 {response.assetIds.map((id) => (
                   <a href={submitterAssetUrl(token, id, true)} key={id}>
@@ -1558,6 +1831,17 @@ function SubmissionHistory({
                   </a>
                 ))}
               </div>
+              {response.sharedAcknowledgment && (
+                <div className="partner-reviewer-acknowledgment">
+                  <strong>
+                    Message from the reviewer{" "}
+                    <small>{dateTime(response.sharedAcknowledgment.at)}</small>
+                  </strong>
+                  <p className="partner-message">
+                    {response.sharedAcknowledgment.message}
+                  </p>
+                </div>
+              )}
             </article>
           ))}
         </div>
