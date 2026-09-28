@@ -62,7 +62,7 @@ const externalStatus = {
   received: "Received for review",
   feedback_shared: "Feedback available",
   approved: "Approved for the stated use",
-  rejected: "Changes are needed",
+  rejected: "This version was not approved",
   withdrawn: "Earlier approval withdrawn",
   cancelled: "Review closed",
 };
@@ -301,24 +301,28 @@ export default function SubmitterApp() {
             )}
             {submission && (
               <>
-                {receipt && (
-                  <div className="partner-receipt" role="status">
-                    <CheckCircle2 size={26} />
-                    <div>
-                      <h2>Received. Your material is waiting for review.</h2>
-                      <p>
-                        Reference {submission.reference}. Save the link below to
-                        see feedback and send updates. Submitting material does
-                        not approve it for use.
-                      </p>
+                {receipt &&
+                  submission.status === "received" &&
+                  submission.responses.length === 0 && (
+                    <div className="partner-receipt" role="status">
+                      <CheckCircle2 size={26} />
+                      <div>
+                        <h2>Received. Your material is waiting for review.</h2>
+                        <p>
+                          Reference {submission.reference}. Save the link below
+                          to see feedback and send updates. Submitting material
+                          does not approve it for use.
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
                 <div className="partner-page-heading partner-return-heading">
                   <div>
                     <p className="eyebrow">
-                      {submission.reference} · VERSION{" "}
-                      {submission.revisions.at(-1)?.number}
+                      {submission.reference}
+                      {submission.revisions.length
+                        ? ` · VERSION ${submission.revisions.at(-1)!.number}`
+                        : ""}
                     </p>
                     <h1>{submission.title}</h1>
                     <span
@@ -383,10 +387,17 @@ export default function SubmitterApp() {
                     <section className="partner-card partner-next-step">
                       <MessageSquare size={23} />
                       <div>
-                        <h2>The team has your package.</h2>
+                        <h2>
+                          {submission.revisions.length
+                            ? "The team has your package."
+                            : "Your submission link is ready."}
+                        </h2>
                         <p>
-                          No feedback has been shared yet. Check this page for
-                          updates. Email notifications are not enabled.
+                          {submission.revisions.length
+                            ? "No feedback has been shared yet."
+                            : "No package or feedback has been shared on this page yet."}{" "}
+                          Check this page for updates. Email notifications are
+                          not enabled.
                         </p>
                       </div>
                     </section>
@@ -407,30 +418,32 @@ export default function SubmitterApp() {
                       submission={submission}
                       onSaved={setSubmission}
                     />
-                    <div className="partner-revision-action">
-                      <div>
-                        <strong>
-                          Changing creative, copy, or intended use?
-                        </strong>
-                        <p>
-                          A new version preserves the earlier package and goes
-                          back for review.
-                        </p>
+                    {submission.revisions.length > 0 && (
+                      <div className="partner-revision-action">
+                        <div>
+                          <strong>
+                            Changing creative, copy, or intended use?
+                          </strong>
+                          <p>
+                            A new version preserves the earlier package and goes
+                            back for review.
+                          </p>
+                        </div>
+                        <button
+                          className="button secondary"
+                          type="button"
+                          onClick={() => {
+                            setRevisionStarted(true);
+                            setRevisionOpen((v) => !v);
+                          }}
+                        >
+                          {revisionOpen
+                            ? "Hide updated package"
+                            : "Submit updated package"}
+                          <ArrowRight size={16} />
+                        </button>
                       </div>
-                      <button
-                        className="button secondary"
-                        type="button"
-                        onClick={() => {
-                          setRevisionStarted(true);
-                          setRevisionOpen((v) => !v);
-                        }}
-                      >
-                        {revisionOpen
-                          ? "Hide updated package"
-                          : "Submit updated package"}
-                        <ArrowRight size={16} />
-                      </button>
-                    </div>
+                    )}
                   </section>
                 )}
                 {revisionStarted && (
@@ -900,7 +913,10 @@ function PackageForm({
 }
 
 function Feedback({ submission }: { submission: SubmitterCase }) {
-  const current = submission.revisions.at(-1)!;
+  const current = submission.revisions.at(-1);
+  const currentResult = submission.results.findLast(
+    (result) => result.revisionId === current?.id,
+  );
   return (
     <>
       {[...submission.feedback].reverse().map((feedback, index) => (
@@ -920,10 +936,12 @@ function Feedback({ submission }: { submission: SubmitterCase }) {
               <span className="partner-tag">Latest feedback</span>
             )}
           </div>
-          {feedback.revisionId !== current.id && (
+          {feedback.revisionId !== current?.id && (
             <p className="partner-draft-note">
-              This feedback refers to an earlier package. Your updated version
-              still needs the reviewer's assessment.
+              This feedback refers to an earlier package.{" "}
+              {currentResult
+                ? "It is retained as history; refer to the current decision above."
+                : "Your updated version still needs the reviewer's assessment."}
             </p>
           )}
           {feedback.body && <p className="partner-message">{feedback.body}</p>}
@@ -960,7 +978,7 @@ function PublishedResults({
   submission: SubmitterCase;
   token: string;
 }) {
-  const current = submission.revisions.at(-1)!;
+  const current = submission.revisions.at(-1);
   return (
     <>
       {[...submission.results].reverse().map((result) => (
@@ -984,18 +1002,26 @@ function PublishedResults({
                 : "This version was not approved"}
           </h2>
           {result.withdrawn && <p>{result.withdrawn.reason}</p>}
-          {result.revisionId !== current.id && (
+          {result.revisionId !== current?.id && (
             <p className="partner-draft-note">
               Historical decision. It does not cover your current version.
             </p>
           )}
-          <h3>Reviewed scope</h3>
+          <h3>
+            {result.withdrawn ? "Earlier reviewed scope" : "Reviewed scope"}
+          </h3>
           <p className="partner-message">
             {result.scope || "See the reviewer's message below."}
           </p>
-          {result.message && (
-            <p className="partner-message">{result.message}</p>
-          )}
+          {result.message &&
+            (result.withdrawn ? (
+              <details>
+                <summary>Earlier decision message · withdrawn</summary>
+                <p className="partner-message">{result.message}</p>
+              </details>
+            ) : (
+              <p className="partner-message">{result.message}</p>
+            ))}
           <div className="partner-file-links">
             {result.assetIds.map((id) => (
               <a href={submitterAssetUrl(token, id, true)} key={id}>
@@ -1216,6 +1242,12 @@ function SubmissionHistory({
           </p>
         </div>
       </div>
+      {!submission.revisions.length && (
+        <p className="partner-history-empty">
+          No package files have been shared here yet. You can send a response to
+          the review team above.
+        </p>
+      )}
       {[...submission.revisions].reverse().map((revision, index) => (
         <details
           className="partner-history-item"

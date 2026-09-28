@@ -767,7 +767,7 @@ function OfferEditor({
                       type="number"
                       min={1}
                       step={1}
-                      max={100000}
+                      max={10000}
                       value={fact.page}
                       onChange={(e) =>
                         set(
