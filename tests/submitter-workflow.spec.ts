@@ -686,10 +686,10 @@ test("offer references preserve original sources and create separately cited imm
   await page
     .getByRole("button", { name: /personal-loan\.pdf · p\. 1/ })
     .click();
-  await expect(page.locator(".offer-source-preview iframe")).toHaveAttribute(
-    "src",
-    /#page=1$/,
-  );
+  const sourcePreview = page.locator(".offer-source-preview");
+  await expect(sourcePreview.locator(".pdf-canvas")).toBeVisible();
+  await expect(sourcePreview.getByLabel("Page number for personal-loan.pdf")).toHaveValue("1");
+  await expect(sourcePreview.locator(".pdf-text-layer")).toContainText("5%");
 
   await page
     .getByRole("button", { name: "Create new version", exact: true })

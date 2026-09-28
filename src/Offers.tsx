@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowLeft,
   ArrowUpRight,
-  BookOpen,
   FilePlus2,
   FileText,
   LoaderCircle,
@@ -10,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { api, json, multipart } from "./api";
-import { bytes, date, ErrorMessage } from "./components";
+import { AssetViewer, bytes, date, ErrorMessage } from "./components";
 import {
   offerAssetUrl,
   PRODUCT_LABELS,
@@ -251,24 +250,14 @@ export default function Offers({ offers, onSaved, actorId }: Props) {
                 {asset ? (
                   <>
                     <div className="offer-source-preview">
-                      {asset.mime === "application/pdf" ? (
-                        <iframe
-                          key={`${asset.id}-${page || 1}`}
-                          src={`${offerAssetUrl(offer.id, asset.id)}${page ? `#page=${page}` : ""}`}
-                          title={`${asset.name}${page ? `, page ${page}` : ""}`}
-                        />
-                      ) : ["image/png", "image/jpeg"].includes(asset.mime) ? (
-                        <img
-                          src={offerAssetUrl(offer.id, asset.id)}
-                          alt={`Offer source: ${asset.name}`}
-                        />
-                      ) : (
-                        <div className="offer-manual">
-                          <BookOpen size={30} />
-                          <h3>Inspect the original file</h3>
-                          <p>This format is preserved for manual review.</p>
-                        </div>
-                      )}
+                      <AssetViewer
+                        caseId={offer.id}
+                        asset={asset}
+                        sourceUrl={offerAssetUrl(offer.id, asset.id)}
+                        downloadUrl={offerAssetUrl(offer.id, asset.id)}
+                        page={page || 1}
+                        onPageChange={setPage}
+                      />
                     </div>
                     <a
                       className="offer-source-download"

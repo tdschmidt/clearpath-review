@@ -26,6 +26,10 @@ The review and queue headers use less vertical space, leaving more of the workin
 
 Phone-width inspection found that opening an assessment could leave the new panel far below the viewport. Assessment, material, and evidence actions now move focus to the panel they open. The stacked layout must preserve the same clear next action as the desktop view.
 
+## Render the source in the reference library
+
+The final browser walkthrough found a blank PDF in the reference library: its native browser embed did not work in the in-app browser, while the workspace's PDF viewer did. The library now uses that same viewer, including page selection, selectable text, zoom, and the original-file link. A reviewer must be able to inspect the basis beside a recorded fact; merely preserving the file is insufficient. The regression now checks rendered PDF content instead of just an iframe URL. The production build, focused source-version browser test, and manual in-app rendering check passed.
+
 ## Combine deliberate handoffs with the work that causes them
 
 Sharing requests can also record a chosen waiting owner and reason in the same action; saving the message as a draft changes neither. When disposing of a finding in a waiting case, a visible choice returns the case to its reviewer or preserves the wait. Other unresolved findings remain open. These choices remove separate tracker updates while leaving the user in control of the next responsibility; they do not send email or decide compliance.
