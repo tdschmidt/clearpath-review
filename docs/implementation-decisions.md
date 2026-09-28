@@ -17,6 +17,8 @@ This log accompanies small implementation commits. It records the reason for eac
 
 The user explicitly chose a working submission portal before email integration. This still costs affiliates an extra step. Email intake remains a conditional next step if transfer effort proves material; automatic analysis stays deferred under the [research decision](research.md#decision-defer-automated-substantive-review).
 
-## How we will verify the changes
+## Verification
 
-Use actual files and independent browser sessions: submit, share selected feedback, return a partial correction, resolve findings individually, and record an exact scoped decision. Check that return-page responses omit internal data, that old file/page citations and decisions remain exact, and that stale saves preserve input without silently applying approval. Migrate a copy of existing data before restarting the live demonstration. Record residual limitations honestly in the walkthrough.
+The final run passed 21 API tests, 7 browser tests, and the production build. Tests use actual files and separate sessions: submit, share feedback, return a partial correction, resolve individually, and record an exact decision. They also cover internal-data exclusion, historical file/page citations, reference versions, and preserved input after a stale approval attempt. A migration rehearsal retained all four live cases and verified all seven originals; the live upgrade and public entry points were then checked. The [resolution table](audit-resolution.md) and [walkthrough](demo-walkthrough.md) state the remaining boundaries.
+
+Browser review produced two further decisions: an unavailable citation must show an error rather than silently substituting another page/file, and a reopened finding draft must retain the context version it was written against. Both prevent plausible-looking evidence from being mistaken for the evidence actually reviewed. The sample card narrative was also corrected for future seeds: matching a no-annual-fee fact does not complete advertising review. Existing historical records were left intact.

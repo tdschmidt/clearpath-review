@@ -2,7 +2,11 @@
 
 Updated September 27, 2026. The application builds and passes API and browser workflow tests, including the ZIP download and internal-rationale exclusion from prepared replies. The temporary public demo is verified; the [README](../README.md) has its URL and running requirements. Read the [product story](product-story.md) for the concise rationale, [research and alternatives](research.md) for evidence and decision history, and [submission-format research](submission-format-research.md) for the visual-package boundary.
 
-**Settled V1:** 8–12 focused implementation hours; a TypeScript application with direct submissions, human findings and evidence requests, original PNG/JPEG and PDF creative, partial revisions, explicit ownership, exact-version human decisions, and outgoing drafts labeled Prepared. Personal loans, credit cards, and mortgage prequalification share this workflow. No email import, live email, automatic compliance checks, AI, or OCR is included. Email integration is the first V2 candidate; narrowly scoped checking follows only if useful.
+**Original build target:** 8–12 focused implementation hours; a TypeScript application with direct submissions, human findings and evidence requests, original PNG/JPEG and PDF creative, partial revisions, explicit ownership, exact-version human decisions, and outgoing drafts labeled Prepared. Personal loans, credit cards, and mortgage prequalification share this workflow. No email import, live email, automatic compliance checks, AI, or OCR is included. Email integration is the first V2 candidate; narrowly scoped checking follows only if useful.
+
+**Audit follow-through:** the approved iteration added the separate submitter return journey, persisted source references, adjacent finding editor, recipient-aware sharing, draft recovery, exact historical decisions, and reasoned withdrawal. The [audit resolution](audit-resolution.md) is the concise current capability/boundary list; [implementation decisions](implementation-decisions.md) records why. This document preserves the original scope reasoning below.
+
+**Automation decision:** research into rules, Jev, and LLMs confirms plausible assistance opportunities, but automated substantive review remains outside this project. Its extraction, source-maintenance, and evaluation requirements would compete with the complete review loop without evidence that analysis is the main delay. The [decision record](research.md#decision-defer-automated-substantive-review) states the alternatives, accepted costs, and criteria for reconsideration. The [technical research](jev-ad-review-research.md) is a future reference, not additional V1 scope.
 
 ## 1. Working direction and decision standard
 
@@ -133,11 +137,11 @@ An unresolved material finding or evidence request prevents approval under the p
 
 **Decision:** keep decision state separate from reply state. An outgoing draft is **Prepared**, never **Sent**. Keep internal notes separate from external reply content and show the intended recipient. Include a recognizable artifact/version and intended use in the response; an internal case ID alone is insufficient.
 
-The reviewer inspects and edits outgoing drafts; transmission happens outside V1. This completes the internal decision and handoff preparation, but does not demonstrate actual notification or a fully automated round trip.
+The reviewer inspects and edits drafts. Explicit sharing publishes a frozen feedback or result snapshot on the case return page; the submitter can respond there. Email transmission remains outside V1. Copying, publishing on the portal, and manually recording outside communication do not establish delivery or receipt.
 
 Zendesk's distinction between [external CCs and internal followers](https://support.zendesk.com/hc/en-us/articles/5179445630234-Understanding-CCs-and-followers) illustrates that conversation participation and visibility are product decisions. It does not establish ClearPath's exact roles.
 
-**Cut:** autonomous external replies, delivery/read tracking, and email recall. If a manual withdrawal is later added, preserve the old decision and create a clear communication task; changing status cannot retract an email or prove takedown.
+**Cut:** autonomous external replies, delivery/read tracking, and email recall. Manual withdrawal now preserves the old decision and marks shared approval withdrawn; changing status cannot retract an email or prove takedown.
 
 ## 5. A small interface with a complete job
 
@@ -159,9 +163,9 @@ Do not place one overloaded status on every concept. The case may be waiting on 
 | Core | One defined review package plus evidence/context; actual renditions available for human inspection | Not automatic approval of unrelated campaign variants or arbitrary-format extraction. |
 | Core | Human findings and evidence requests grounded in the actual creative | No automated checks, AI, OCR, or machine compliance guarantee. |
 | Core | Clear next actor, actionable feedback, partial revision handling, explicit durable decisions | Not enterprise routing and permission administration. |
-| Core | Prepared reply drafts and safe separation of internal/external content | No sending or claim that anyone has been notified. |
-| Added after core verification | Portable ZIP review record with original files, version/context records, findings, decisions, timestamps, and captured decision snapshots | Browser download verified. Excludes note records and reply drafts but includes internal reasoning; not an external response or production audit system. |
-| Later if useful | Small search/filter improvements, manual withdrawal and communication task | Add only if they materially support the demonstration. |
+| Core | Editable drafts, scoped portal feedback/results, and submitter responses | No email sending or claim that anyone has been notified. |
+| Added after core verification | Portable ZIP review record with original files, version/context records, findings, decisions, timestamps, and captured decision snapshots | Browser download verified. Excludes private note records and uncommunicated reply drafts but includes internal reasoning and communicated message versions; not an external response or production audit system. |
+| Added after audit | Actionable queue filters, source references, manual withdrawal, and outside-communication records | Addresses observed gaps; simulated participants remain explicit. |
 | Deferred | Email integration, live-web monitoring, campaign publishing, broad templates, extensive analytics, automated product/state rules | These add breadth before the selected job is reliable. All three products already share the human workflow. |
 
 The initial workflow covers personal loans, credit cards, and mortgage prequalification with fictional material and human judgment. Following the [format research](submission-format-research.md), original PNG/JPEG and multipage PDF proofs are the supported visual previews, with accompanying copy, URLs and destination evidence in the same package. Other file types are retained for manual download; a supported rendition may still be needed for review. Do not force a submitter to retype the creative into a text box. This is a representative supported envelope, not a claim about the most frequent industry format.
@@ -175,6 +179,8 @@ This is an unauthenticated shared demonstration, so use fictional creative and c
 Email integration comes first if direct-entry and reply-transfer effort is material. It must preserve message and attachment evidence, support human recovery from ambiguous association, and distinguish received, saved, prepared, and transmitted states. No provider or sending capability is promised by V1.
 
 Only afterward consider a narrow fee comparison, APR-location assistance, or repayment-disclosure lookup. Each needs explicit product/context scope, reliable source evidence, and a demonstrated reduction in work. No finding becomes legal clearance. This ordering replaces earlier proposals to start with live intake and automatic checks.
+
+These are conditional candidates, not a committed roadmap. A future discovery exercise can change their order if evidence shows analysis rather than communication consumes the most effort. The current project ends with human substantive review; adding automation requires reopening the documented decision and evaluating alternatives.
 
 The interface currently contains general human-review prompts only. A product-specific legal guide is deferred until its sources, applicability, and current status have been verified; it must not become a misleading checklist assembled from external sample claims.
 

@@ -42,11 +42,19 @@ We considered a compliance scanner, an approval workspace, and a governed templa
 
 The product must still support substantive review. Findings connect a concern to the creative and its supporting evidence, distinguish corrections from evidence requests, and retain explicit dispositions through revisions. This provides more value than moving a “pending” row into a dashboard.
 
+## Why automated review is outside this project
+
+We investigated deterministic checks, Jev classification, LLM assistance, and retrieval over the supplied legal research. They could help identify claims, compare them with offer facts, find relevant requirements, and reconcile corrections. **The decision is to leave automated substantive review out of this project.** The [decision record](research.md#decision-defer-automated-substantive-review) compares these approaches; the [technical research](jev-ad-review-research.md) preserves the sources, examples, and conditions for a future evaluation.
+
+The assignment gives us evidence of fragmented coordination, but no measurements showing that claim analysis is the dominant delay. A useful scanner would also need accurate extraction from the actual creative, maintained rules and exceptions, authoritative offer facts, and representative expert-labeled cases. Our research found errors in the supplied rule examples. Adding a model call would not establish that its findings are correct or that checking them saves reviewer time. Within the 24-hour assignment, that evaluation would compete with finishing and verifying the correction-to-decision workflow.
+
+This choice accepts a cost: reviewers still identify issues and look up requirements themselves. The workspace supports that responsibility through original material, evidence requests, explicit dispositions, and versioned decisions. We have no evidence that ClearPath already has an adequate analysis tool, rejected AI, or is prohibited from using it. A future evaluation would first establish where time is lost and what tools, policies, and sources the team already uses. Automated assistance becomes a stronger candidate if it reduces total review effort without increasing consequential misses.
+
 ## Email outside, review inside
 
-Expecting independent affiliates to adopt another portal is a risky assumption. The intended longer-term model preserves their email workflow while giving internal staff one review record. **V1 accepts direct submissions only.** A marketer submits directly, or a partner manager uploads the package received elsewhere. Replies are prepared drafts, never sent by the app. Email import and live inbound/outbound integrations are deferred.
+Expecting independent affiliates to adopt another portal is a risky assumption. The intended longer-term model preserves their email workflow while giving internal staff one review record. **V1 accepts direct submissions only.** A marketer submits directly, or a partner manager uploads the package received elsewhere. A separate submission page and case return link now let affiliates see deliberately shared feedback and return corrections. Reviewers can prepare editable drafts and publish a feedback or decision snapshot there; email is never sent by the app. Email import and live inbound/outbound integrations are deferred.
 
-This boundary tests the review loop while leaving transfer effort visible. V1 cannot claim automatic capture, mailbox reconciliation, or notification. Its value must exceed the work of entering submissions and transferring replies; maintaining Excel in parallel would undermine the intended benefit.
+This boundary tests the review loop while leaving transfer effort visible. V1 cannot claim automatic capture, mailbox reconciliation, or email notification. Its value must exceed the work of entering submissions and transferring replies; maintaining Excel in parallel would undermine the intended benefit.
 
 ## What must be right—and what can wait
 
@@ -55,3 +63,10 @@ All three products share a human review workflow. Original PNG/JPEG and PDF mate
 Domain research informed these choices without prescribing the software. For example, [Regulation Z §1026.24](https://www.consumerfinance.gov/rules-policy/regulations/1026/24/) contains conditional advertising and presentation requirements for covered closed-end credit. That supports preserving context and renditions, not claiming every advertisement needs the same checklist. V1 performs no automated legal checks, AI analysis, or OCR.
 
 After verifying the core, we added a portable internal review-record export; it is not a production audit system. Email integration is the first V2 candidate. Narrow fee comparison, APR-location assistance, and repayment-disclosure lookup follow only if useful. Broad legal coverage, automatic approval, campaign publishing, and enterprise administration are excluded. The browser tests exercise real packages, unresolved issues through partial corrections, and durable, correctly scoped decisions. That demonstrates functionality; throughput improvement still requires measurement.
+
+
+## What the audit changed
+
+The first build put submission inside the reviewer dashboard. That did not fit the affiliate’s job, so we separated the full submission-and-correction journey. The audit also showed that findings hid their evidence, internal questions could become affiliate instructions, and saved drafts could not be edited. We spent the next iteration on those failures: adjacent evidence and editing, explicit audiences, frozen shared feedback, source versions, and recoverable drafts. [The short decision log](implementation-decisions.md) and [resolution table](audit-resolution.md) document the choices and limits.
+
+The records are durable, but access control remains simulated: the reviewer dashboard is open and participant names are selectable. That cut supports an inspectable take-home demonstration, not a real-client pilot. Authentication, retention policy, and notification delivery would be necessary decisions before real use.
