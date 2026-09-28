@@ -54,7 +54,6 @@ import {
   pendingDecisionHandoff,
   PRODUCT_LABELS,
   REVIEWER,
-  PARTICIPANTS,
   ROLE_LABELS,
   type Finding,
   type Offer,
@@ -92,10 +91,7 @@ const findingNames = {
 
 export default function App() {
   useUnsavedWarning();
-  const [actorId, setActorId] = useState(
-    () => sessionStorage.getItem("clearpath-actor") || "maya",
-  );
-  const actor = PARTICIPANTS.find((p) => p.id === actorId) || PARTICIPANTS[0];
+  const actorId = "maya";
   const [updatesAvailable, setUpdatesAvailable] = useState(false);
   const [cases, setCases] = useState<ReviewCase[]>([]),
     [offers, setOffers] = useState<Offer[]>([]);
@@ -298,26 +294,6 @@ export default function App() {
             Sample materials
             <ArrowUpRight size={14} />
           </button>
-          <div className="reviewer">
-            <label>
-              Demo participant
-              <select
-                aria-label="Demo participant"
-                value={actorId}
-                onChange={(e) => {
-                  setActorId(e.target.value);
-                  sessionStorage.setItem("clearpath-actor", e.target.value);
-                }}
-              >
-                {PARTICIPANTS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} · {p.role}
-                  </option>
-                ))}
-              </select>
-              <small>Simulated identity · no sign-in</small>
-            </label>
-          </div>
         </div>
       </aside>
       <div className="main-shell">
@@ -335,25 +311,6 @@ export default function App() {
               >
                 Updates available · load latest
               </button>
-            )}
-            {selected && (
-              <label className="topbar-actor">
-                Demo participant{" "}
-                <select
-                  aria-label="Active demo participant"
-                  value={actorId}
-                  onChange={(e) => {
-                    setActorId(e.target.value);
-                    sessionStorage.setItem("clearpath-actor", e.target.value);
-                  }}
-                >
-                  {PARTICIPANTS.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
             )}
             <button
               className="icon-button"
@@ -385,7 +342,7 @@ export default function App() {
           ) : selected ? (
             <ReviewWorkspace
               key={selected.id}
-              reviewerName={actor.name}
+              reviewerName={REVIEWER}
               review={selected}
               offers={offers}
               saving={saving}
@@ -481,7 +438,7 @@ export default function App() {
           {dialog === "decision" && (
             <DecisionForm
               review={selected}
-              reviewerName={actor.name}
+              reviewerName={REVIEWER}
               onAction={action}
               onClose={() => setDialog(null)}
             />
@@ -499,7 +456,7 @@ export default function App() {
                   ? dialog.draftId
                   : undefined
               }
-              reviewerName={actor.name}
+              reviewerName={REVIEWER}
               review={selected}
               offers={offers}
               onAction={action}

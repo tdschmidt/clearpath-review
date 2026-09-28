@@ -2671,8 +2671,8 @@ function CaseDetails({
           </select>
         </Field>
         <p className="small-muted">
-          Current demo identity: {reviewerName || "Maya Chen"}. Names identify
-          simulated participants.
+          Actions are recorded as {reviewerName || "Maya Chen"} in this demo.
+          No sign-in is required.
         </p>
         <h3>Submitter return link</h3>
         <p>

@@ -228,24 +228,6 @@ input[type="checkbox"] {
 .sample-nav svg:last-child {
   margin-left: auto;
 }
-.reviewer {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 22px 6px;
-  border-top: 1px solid #dce4d8;
-}
-.reviewer strong {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-}
-.reviewer small {
-  display: block;
-  color: #86907f;
-  font-size: 9px;
-  margin-top: 3px;
-}
 .avatar {
   height: 32px;
   width: 32px;
@@ -2973,21 +2955,6 @@ textarea:focus-visible {
 
 .case-open main {
   padding: 0;
-}
-.reviewer select,
-.topbar-actor select {
-  max-width: 185px;
-  border: 1px solid #d5ded8;
-  border-radius: 4px;
-  padding: 6px;
-  background: white;
-  font-size: 12px;
-}
-.topbar-actor {
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 @media (max-width: 760px) {
   .sidebar {

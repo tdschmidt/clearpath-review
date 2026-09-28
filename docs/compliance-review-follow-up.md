@@ -20,7 +20,7 @@ The in-app guide now ends with the actual feedback and decision handoffs. It exp
 
 ## What these changes do not establish
 
-Participants remain selectable demonstration identities, and people supply the references and their claimed authority. The export helps retrieve evidence; it is not a tamper-resistant archive. Neither successful workflow tests nor a plausible bottleneck hypothesis establishes regulatory completeness or measured throughput improvement. [The research map](regulatory-design-basis.md) separates legal requirements, company procedures, and our design choices.
+The workspace uses one fixed demonstration reviewer, and people supply the references and their claimed authority. The export helps retrieve evidence; it is not a tamper-resistant archive. Neither successful workflow tests nor a plausible bottleneck hypothesis establishes regulatory completeness or measured throughput improvement. [The research map](regulatory-design-basis.md) separates legal requirements, company procedures, and our design choices.
 
 ## Verification and the next useful corrections
 
@@ -29,3 +29,7 @@ The final build passed 33 API tests and 19 browser tests. The correction-round t
 Visual checks confirmed the withdrawal warning, recovery links, required card finding, and scope prompt. Deployment preserved the other three live cases, all three reference records, and all ten original files. The card received one new finding/history event through its ordinary API, with no retroactive edits.
 
 The [remaining audit](focused-follow-up-findings.md) puts two corrections ahead of new features: require considering unassessed evidence at approval, and detect changed instructions that need to be re-shared. Both repair coordination promises already made by the product. Email integration and broader analysis remain separate directions.
+
+## Remove the participant switcher
+
+The selector changed action attribution while leaving almost the same screen visible. It looked like a stakeholder-view switch but did not provide one. We removed it and use Maya Chen as the fixed demonstration reviewer, ignoring any earlier session selection. Case ownership and historical authors remain separate records. Affiliates still use the submission page and their case return link; this change does not merge those experiences or add authentication.
