@@ -49,6 +49,36 @@
   width: 100%;
   color: #25362f;
 }
+.rw-response-thread {
+  display: grid;
+  gap: 12px;
+}
+.rw-response {
+  padding: 14px;
+  border: 1px solid #dce3dd;
+  border-radius: 7px;
+  background: #f8faf7;
+}
+.rw-response > small {
+  display: block;
+  margin-top: 4px;
+  color: #5e6c64;
+}
+.rw-response-files,
+.rw-response-files > div {
+  display: grid;
+  gap: 4px;
+}
+.rw-response-files small {
+  color: #5e6c64;
+}
+.rw-evidence-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #e0e5de;
+}
 .review-workspace h1 {
   font-size: 25px;
   line-height: 1.25;

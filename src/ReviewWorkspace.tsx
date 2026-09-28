@@ -44,6 +44,7 @@ import {
   type Participant,
 } from "../shared/types";
 import "./reviewer.css";
+import { ResponseThread } from "./ResponseThread";
 
 export type ReviewDialog =
   | "revision"
@@ -103,6 +104,10 @@ export function ReviewWorkspace({
     revisionLocation(rev),
   );
   const [source, setSource] = useState<SourceCitation | null>(null);
+  const [evidence, setEvidence] = useState<{
+    assetId: string;
+    page: number;
+  } | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [showClosed, setShowClosed] = useState(false);
   const [decisionId, setDecisionId] = useState("");
@@ -123,6 +128,7 @@ export function ReviewWorkspace({
   const sourceAsset = selectedSourceOffer?.assets?.find(
     (a) => a.id === source?.assetId,
   );
+  const evidenceAsset = review.assets.find((a) => a.id === evidence?.assetId);
   const findings = review.findings.filter(
     (f) => showClosed || f.status === "open" || f.needsRecheck,
   );
@@ -170,6 +176,7 @@ export function ReviewWorkspace({
     setLocation(revisionLocation(rev));
     setOfferId(rev.offerId);
     setSource(null);
+    setEvidence(null);
   }, [review.id, rev.id]);
   useEffect(() => {
     const fromHash = () => {
@@ -191,6 +198,15 @@ export function ReviewWorkspace({
       page: citation.page || 1,
       zoom: 100,
     });
+  }
+  function openEvidence(assetId: string) {
+    setTab("review");
+    setEvidence({ assetId, page: 1 });
+    setSource(null);
+  }
+  function openSource(citation: SourceCitation) {
+    setSource(citation);
+    setEvidence(null);
   }
   function showDecision(decision: Decision) {
     setDecisionId(decision.id);
@@ -486,7 +502,7 @@ export function ReviewWorkspace({
               </div>
             </form>
           )}
-          <div className={`rw-grid ${source ? "with-source" : ""}`}>
+          <div className={`rw-grid ${source || evidence ? "with-source" : ""}`}>
             <section className="rw-material panel">
               <header className="panel-header">
                 <div>
@@ -521,6 +537,7 @@ export function ReviewWorkspace({
                 revision={selectedRev}
                 location={location}
                 onLocation={setLocation}
+                onEvidence={openEvidence}
               />
             </section>
             {source && (
@@ -563,11 +580,43 @@ export function ReviewWorkspace({
                 {source.note && <p className="rw-source-note">{source.note}</p>}
               </section>
             )}
+            {evidence && (
+              <section
+                className="rw-source panel"
+                aria-label="Supporting evidence"
+              >
+                <header className="panel-header">
+                  <div>
+                    <h2>Supporting evidence</h2>
+                    <p>{evidenceAsset?.name}</p>
+                  </div>
+                  <button
+                    className="icon-button"
+                    aria-label="Close evidence"
+                    onClick={() => setEvidence(null)}
+                  >
+                    <X size={17} />
+                  </button>
+                </header>
+                {evidenceAsset ? (
+                  <AssetViewer
+                    caseId={review.id}
+                    asset={evidenceAsset}
+                    page={evidence.page}
+                    onPageChange={(page) => setEvidence({ ...evidence, page })}
+                  />
+                ) : (
+                  <Empty title="Evidence unavailable">
+                    The preserved attachment could not be found.
+                  </Empty>
+                )}
+              </section>
+            )}
             <aside className="rw-working">
               <OfferFacts
                 offer={offer}
                 intendedUse={rev.intendedUse}
-                onSource={setSource}
+                onSource={openSource}
               />
               {editor ? (
                 <FindingEditor
@@ -608,7 +657,7 @@ export function ReviewWorkspace({
                           currentNumber={rev.number}
                           review={review}
                           onJump={jump}
-                          onSource={setSource}
+                          onSource={openSource}
                           onEdit={() => setEditor({ mode: "edit", finding: f })}
                           onDisposition={(status) =>
                             setEditor({
@@ -692,7 +741,13 @@ export function ReviewWorkspace({
           onDecision={showDecision}
         />
       )}
-      {tab === "drafts" && <ReplyHistory review={review} onDialog={onDialog} />}
+      {tab === "drafts" && (
+        <ReplyHistory
+          review={review}
+          onDialog={onDialog}
+          onEvidence={openEvidence}
+        />
+      )}
       {tab === "details" && (
         <CaseDetails
           review={review}
@@ -716,12 +771,14 @@ function PackageMaterial({
   revision,
   location,
   onLocation,
+  onEvidence,
   compact = false,
 }: {
   review: ReviewCase;
   revision: PackageRevision;
   location: Location;
   onLocation: (value: Location) => void;
+  onEvidence?: (assetId: string) => void;
   compact?: boolean;
 }) {
   const components = revision.components.filter(
@@ -734,6 +791,26 @@ function PackageMaterial({
   const asset = review.assets.find((a) => a.id === selected?.assetId);
   return (
     <>
+      {onEvidence && components.some((c) => c.role === "evidence") && (
+        <div className="rw-evidence-links">
+          {components
+            .filter((c) => c.role === "evidence")
+            .map((c) => (
+              <button
+                type="button"
+                className="text-button"
+                key={c.assetId}
+                onClick={() => onEvidence(c.assetId)}
+              >
+                <FileText size={14} />
+                Open{" "}
+                {review.assets.find((a) => a.id === c.assetId)?.name ||
+                  "evidence"}{" "}
+                beside material
+              </button>
+            ))}
+        </div>
+      )}
       {components.length > 0 && (
         <div className="rw-file-picker">
           <label>
@@ -2161,9 +2238,11 @@ function Activity({
 function ReplyHistory({
   review,
   onDialog,
+  onEvidence,
 }: {
   review: ReviewCase;
   onDialog: (dialog: ReviewDialog) => void;
+  onEvidence: (assetId: string) => void;
 }) {
   const rev = currentRevision(review);
   return (
@@ -2263,30 +2342,11 @@ function ReplyHistory({
             <p className="preserve-lines">{result.message}</p>
           </article>
         ))}
-        {[...(review.responses || [])].reverse().map((response) => (
-          <article className="rw-draft" key={response.id}>
-            <strong>
-              {response.author} ·{" "}
-              {response.audience === "internal"
-                ? "Internal response"
-                : "Submitter response"}
-            </strong>
-            <small>{dateTime(response.createdAt)}</small>
-            <p className="preserve-lines">{response.text}</p>
-            {response.findingIds.length > 0 && (
-              <p className="small-muted">
-                Responds to{" "}
-                {response.findingIds
-                  .map(
-                    (id) =>
-                      `F${review.findings.find((f) => f.id === id)?.number || "?"}`,
-                  )
-                  .join(", ")}
-                . Findings require reviewer disposition.
-              </p>
-            )}
-          </article>
-        ))}
+        <ResponseThread
+          review={review}
+          responses={[...(review.responses || [])].reverse()}
+          onEvidence={onEvidence}
+        />
       </section>
       <section className="panel">
         <header className="panel-header">
