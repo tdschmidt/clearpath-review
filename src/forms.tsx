@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { api, ApiError, multipart } from "./api";
 import { clearDrafts, useDraftState } from "./drafts";
+import { usePackageDraft, type DraftChoice } from "./submitter-drafts";
 import { bytes, ErrorMessage, Modal } from "./components";
 import {
   currentRevision,
@@ -90,9 +91,26 @@ export function SubmissionForm({
   onSaved: (c: ReviewCase) => void;
   onClose: () => void;
 }) {
+  type Fields = {
+    title: string;
+    product: Product;
+    submitter: string;
+    submitterEmail: string;
+    channel: string;
+    launchDate: string;
+    submittedBy: string;
+    summary: string;
+    offerId: string;
+    intendedUse: string;
+    copy: string;
+    destinationUrl: string;
+    advertisedOffer: string;
+    applicabilityReason: string;
+  };
+  type LocalFile = { file: File; role: AssetRole; replaces?: string };
   const previous = existing && currentRevision(existing);
   const draftKey = `submission/${existing?.id || "new"}/`;
-  const [data, setData] = useDraftState<SubmissionInput>(draftKey + "fields", {
+  const initial: Fields = {
     title: existing?.title || "",
     product: existing?.product || "personal_loan",
     submitter: existing?.submitter || "",
@@ -105,25 +123,117 @@ export function SubmissionForm({
     intendedUse: previous?.intendedUse || "",
     copy: previous?.copy || "",
     destinationUrl: previous?.destinationUrl || "",
-    fileRoles: [],
-  });
-  const [files, setFiles] = useDraftState<
-    { file: File; role: AssetRole; replaces?: string }[]
-  >(draftKey + "files", [], true);
-  const [retained, setRetained] = useDraftState(
-    draftKey + "retained",
-    previous?.components || [],
+    advertisedOffer: previous?.advertisedOffer || "",
+    applicabilityReason: previous?.applicabilityReason || "",
+  };
+  const draft = usePackageDraft(
+    `clearpath-draft:${draftKey}fields`,
+    previous?.id || "new",
+    initial,
+  );
+  const data = draft.value;
+  const setData = draft.setValue;
+  const [materials, setMaterials] = useDraftState<{
+    baseRevisionId: string;
+    files: LocalFile[];
+    retained: RevisionInput["retainedComponents"];
+  }>(
+    draftKey + "materials",
+    {
+      baseRevisionId: previous?.id || "new",
+      files: [],
+      retained:
+        previous?.components.map(({ assetId, role }) => ({ assetId, role })) ||
+        [],
+    },
     true,
   );
+  const files = materials.files;
+  const retained = materials.retained;
+  const setFiles = (
+    update: LocalFile[] | ((old: LocalFile[]) => LocalFile[]),
+  ) =>
+    setMaterials((old) => ({
+      ...old,
+      files: typeof update === "function" ? update(old.files) : update,
+    }));
+  const setRetained = (
+    update:
+      | RevisionInput["retainedComponents"]
+      | ((
+          old: RevisionInput["retainedComponents"],
+        ) => RevisionInput["retainedComponents"]),
+  ) =>
+    setMaterials((old) => ({
+      ...old,
+      retained: typeof update === "function" ? update(old.retained) : update,
+    }));
+  const contextChanged = Object.keys(initial).some(
+    (field) =>
+      draft.base[field as keyof Fields] !== initial[field as keyof Fields],
+  );
+  const needsReconciliation =
+    draft.needsReconciliation ||
+    contextChanged ||
+    materials.baseRevisionId !== (previous?.id || "new");
+  const orphanedReplacements = files.filter(
+    (file) =>
+      file.replaces &&
+      !previous?.components.some(
+        (component) => component.assetId === file.replaces,
+      ),
+  );
+  const [choices, setChoices] = useState<
+    Partial<Record<keyof Fields, DraftChoice>>
+  >({});
+  const [checkedLatest, setCheckedLatest] = useState(false);
+  const expectedVersion = useRef(existing?.version);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const key = useRef({ signature: "", value: crypto.randomUUID() });
-  const update = <K extends keyof SubmissionInput>(
-    name: K,
-    value: SubmissionInput[K],
-  ) => setData((d) => ({ ...d, [name]: value }));
+  const contextSignature = JSON.stringify(initial);
+  useEffect(() => {
+    setChoices({});
+    setCheckedLatest(false);
+  }, [previous?.id, contextSignature]);
+  useEffect(() => {
+    if (!needsReconciliation) expectedVersion.current = existing?.version;
+  }, [existing?.version, needsReconciliation]);
+  useEffect(() => {
+    if (!draft.dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [draft.dirty]);
+  const fieldLabels: Record<keyof Fields, string> = {
+    title: "Title",
+    product: "Product",
+    submitter: "Submitter",
+    submitterEmail: "Contact email",
+    channel: "Placement",
+    launchDate: "Target launch",
+    submittedBy: "Updated by",
+    summary: "Revision note",
+    offerId: "Offer reference",
+    intendedUse: "Intended use",
+    copy: "Accompanying copy",
+    destinationUrl: "Destination URL",
+    advertisedOffer: "Advertised offer",
+    applicabilityReason: "Reference applicability",
+  };
+  const fieldValue = (field: keyof Fields, value: string) =>
+    field === "offerId"
+      ? offers.find((offer) => offer.id === value)
+        ? `${offers.find((offer) => offer.id === value)!.name} · ${offers.find((offer) => offer.id === value)!.version}`
+        : value || "(not selected)"
+      : value || "(empty)";
+  const update = <K extends keyof Fields>(name: K, value: Fields[K]) =>
+    setData((d) => ({ ...d, [name]: value }));
   function addFiles(incoming: File[]) {
     if (files.length + incoming.length > 10) {
       setError("A submission can include up to 10 new files.");
@@ -190,6 +300,18 @@ export function SubmissionForm({
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError("");
+    if (needsReconciliation) {
+      setError(
+        "Review the latest package and reconcile this draft before saving.",
+      );
+      return;
+    }
+    if (orphanedReplacements.length) {
+      setError(
+        "A replacement refers to a file that is no longer current. Remove the upload or keep it as an additional file.",
+      );
+      return;
+    }
     setBusy(true);
     try {
       const payload = existing
@@ -206,7 +328,9 @@ export function SubmissionForm({
             replacements: files.map((f) => f.replaces || null),
             fileRoles: files.map((f) => f.role),
             retainedComponents: retained,
-            expectedVersion: existing.version,
+            advertisedOffer: data.advertisedOffer,
+            applicabilityReason: data.applicabilityReason,
+            expectedVersion: expectedVersion.current!,
           } satisfies RevisionInput & { expectedVersion: number })
         : {
             ...data,
@@ -227,10 +351,17 @@ export function SubmissionForm({
           key.current.value,
         ),
       );
+      draft.clear();
       clearDrafts(draftKey);
       onSaved(saved);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409 && existing && onLatest) {
+      if (
+        e instanceof ApiError &&
+        e.status === 409 &&
+        e.details?.code === "version_conflict" &&
+        existing &&
+        onLatest
+      ) {
         const latest = await api<ReviewCase>(`/api/cases/${existing.id}`);
         onLatest(latest);
         setError(
@@ -259,6 +390,120 @@ export function SubmissionForm({
             Use fictional materials only. Submissions in this demo are shared
             with everyone who has its link.
           </p>
+          {needsReconciliation && (
+            <section
+              className="rw-warning"
+              aria-label="Reconcile package draft"
+            >
+              <h3>
+                {draft.legacy
+                  ? "Review an older saved draft"
+                  : `Review the latest package · version ${previous?.number || 1}`}
+              </h3>
+              <p>
+                Your draft was based on earlier context. Untouched fields will
+                use the latest values. Keep your actual edits where appropriate;
+                your uploads stay here.
+              </p>
+              {draft.latestChanges.length > 0 && (
+                <p>
+                  Latest changes:{" "}
+                  {draft.latestChanges
+                    .map((field) => fieldLabels[field as keyof Fields])
+                    .join(", ")}
+                </p>
+              )}
+              {draft.conflicts.map((field) => (
+                <div key={field} className="form-section">
+                  <h4>{fieldLabels[field]}</h4>
+                  <label className="check-line">
+                    <input
+                      type="radio"
+                      name={`internal-reconcile-${field}`}
+                      checked={choices[field] === "latest"}
+                      onChange={() =>
+                        setChoices((old) => ({ ...old, [field]: "latest" }))
+                      }
+                    />
+                    <span>
+                      Use latest {fieldLabels[field].toLowerCase()}
+                      <p className="preserve-lines">
+                        {fieldValue(field, initial[field])}
+                      </p>
+                    </span>
+                  </label>
+                  <label className="check-line">
+                    <input
+                      type="radio"
+                      name={`internal-reconcile-${field}`}
+                      checked={choices[field] === "draft"}
+                      onChange={() =>
+                        setChoices((old) => ({ ...old, [field]: "draft" }))
+                      }
+                    />
+                    <span>
+                      Keep my draft {fieldLabels[field].toLowerCase()}
+                      <p className="preserve-lines">
+                        {fieldValue(field, data[field])}
+                      </p>
+                    </span>
+                  </label>
+                </div>
+              ))}
+              <p>
+                Latest files:{" "}
+                {previous?.components
+                  .map(
+                    (component) =>
+                      existing!.assets.find(
+                        (asset) => asset.id === component.assetId,
+                      )?.name,
+                  )
+                  .join(", ") || "Copy-only package"}
+                .
+              </p>
+              <label className="check-line">
+                <input
+                  type="checkbox"
+                  checked={checkedLatest}
+                  onChange={(event) => setCheckedLatest(event.target.checked)}
+                />
+                <span>
+                  I checked the latest package. Reset Keep, Remove, and role
+                  choices to its current files so I can review those choices
+                  again.
+                </span>
+              </label>
+              <button
+                type="button"
+                className="button primary"
+                disabled={
+                  busy ||
+                  !checkedLatest ||
+                  draft.conflicts.some((field) => !choices[field])
+                }
+                onClick={() => {
+                  if (!draft.reconcile(choices)) return;
+                  setMaterials((old) => ({
+                    ...old,
+                    baseRevisionId: previous?.id || "new",
+                    retained: (previous?.components || [])
+                      .filter(
+                        (component) =>
+                          !old.files.some(
+                            (file) => file.replaces === component.assetId,
+                          ),
+                      )
+                      .map(({ assetId, role }) => ({ assetId, role })),
+                  }));
+                  expectedVersion.current = existing?.version;
+                  setError("");
+                }}
+              >
+                Use latest package with reviewed edits
+              </button>
+            </section>
+          )}
           {!existing && (
             <div className="sample-callout">
               <span>
@@ -274,7 +519,11 @@ export function SubmissionForm({
               </button>
             </div>
           )}
-          <section className="form-section">
+          <fieldset
+            className="form-section"
+            disabled={busy || needsReconciliation}
+            style={{ border: 0, padding: 0, marginInline: 0, minWidth: 0 }}
+          >
             <div className="section-heading">
               <span className="step-number">1</span>
               <h3>Review context</h3>
@@ -363,8 +612,12 @@ export function SubmissionForm({
                 onChange={(e) => update("intendedUse", e.target.value)}
               />
             </Field>
-          </section>
-          <section className="form-section">
+          </fieldset>
+          <fieldset
+            className="form-section"
+            disabled={busy || needsReconciliation}
+            style={{ border: 0, padding: 0, marginInline: 0, minWidth: 0 }}
+          >
             <div className="section-heading">
               <span className="step-number">2</span>
               <h3>Material to review</h3>
@@ -425,7 +678,10 @@ export function SubmissionForm({
                           setRetained((old) =>
                             included
                               ? old.filter((c) => c.assetId !== comp.assetId)
-                              : [...old, comp],
+                              : [
+                                  ...old,
+                                  { assetId: comp.assetId, role: comp.role },
+                                ],
                           );
                         }}
                       >
@@ -448,7 +704,9 @@ export function SubmissionForm({
                               retained.find((c) => c.assetId === comp.assetId)
                                 ?.role || comp.role;
                             setFiles((old) => [
-                              ...old.filter((f) => f.replaces !== comp.assetId),
+                              ...old.filter(
+                                (f) => f.replaces !== comp.assetId,
+                              ),
                               { file, role, replaces: comp.assetId },
                             ]);
                             setRetained((old) =>
@@ -462,8 +720,8 @@ export function SubmissionForm({
                   );
                 })}
                 <small>
-                  Replacing removes the earlier file from this version only. All
-                  originals remain in history.
+                  Replacing removes the earlier file from this version only.
+                  All originals remain in history.
                 </small>
               </div>
             )}
@@ -506,12 +764,36 @@ export function SubmissionForm({
             </div>
             {files.length > 0 && (
               <div className="upload-list">
-                {files.map(({ file, role }, index) => (
+                {files.map(({ file, role, replaces }, index) => (
                   <div className="upload-row" key={index}>
                     <FileUp size={18} />
                     <span className="upload-name">
                       {file.name}
                       <small>{bytes(file.size)}</small>
+                      {replaces &&
+                        !previous?.components.some(
+                          (component) => component.assetId === replaces,
+                        ) && (
+                          <span className="rw-warning">
+                            The original replacement target is no longer
+                            current.
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={() =>
+                                setFiles((old) =>
+                                  old.map((item, position) =>
+                                    position === index
+                                      ? { ...item, replaces: undefined }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            >
+                              Keep as additional file
+                            </button>
+                          </span>
+                        )}
                     </span>
                     <select
                       aria-label={`Role for ${file.name}`}
@@ -569,8 +851,12 @@ export function SubmissionForm({
                 onChange={(e) => update("destinationUrl", e.target.value)}
               />
             </Field>
-          </section>
-          <section className="form-section">
+          </fieldset>
+          <fieldset
+            className="form-section"
+            disabled={busy || needsReconciliation}
+            style={{ border: 0, padding: 0, marginInline: 0, minWidth: 0 }}
+          >
             <div className="section-heading">
               <span className="step-number">3</span>
               <h3>{existing ? "What changed?" : "Submission details"}</h3>
@@ -623,7 +909,7 @@ export function SubmissionForm({
                 onChange={(e) => update("summary", e.target.value)}
               />
             </Field>
-          </section>
+          </fieldset>
           <ErrorMessage error={error} />
         </div>
         <footer className="modal-footer">
@@ -646,6 +932,7 @@ export function SubmissionForm({
             disabled={busy}
             onClick={() => {
               if (confirm("Discard this unfinished submission?")) {
+                draft.clear();
                 clearDrafts(draftKey);
                 onClose();
               }
@@ -653,10 +940,17 @@ export function SubmissionForm({
           >
             Discard draft
           </button>
-          <Submit busy={busy}>
+          <button
+            type="submit"
+            className="button primary"
+            disabled={
+              busy || needsReconciliation || orphanedReplacements.length > 0
+            }
+          >
+            {busy && <LoaderCircle size={17} className="spin" />}
             {existing ? "Save new version" : "Create submission"}
             <ArrowRight size={16} />
-          </Submit>
+          </button>
         </footer>
       </form>
     </Modal>
