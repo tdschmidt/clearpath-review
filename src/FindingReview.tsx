@@ -92,13 +92,15 @@ export function FindingReview({
           <p>{finding.request}</p>
         </div>
         <div className="rw-finding-buttons">
-          <button
-            type="button"
-            className="button secondary"
-            onClick={onOriginal}
-          >
-            Compare original material
-          </button>
+          {(original?.assetId || finding.assetId) && (
+            <button
+              type="button"
+              className="button secondary"
+              onClick={onOriginal}
+            >
+              Compare original material
+            </button>
+          )}
           <button
             type="button"
             className="button secondary"

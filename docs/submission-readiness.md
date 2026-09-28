@@ -26,7 +26,7 @@ An internal revision now defaults “Updated by” to the active demo reviewer, 
 
 ## Keep evidence tied to the selected finding
 
-Selecting another finding clears the previous source/evidence pane before opening that finding's original material, if any. An uncited request must not inherit an unrelated image from the previous assessment. This addresses a misleading visual context without changing preserved evidence or adding document analysis.
+Selecting another finding clears the previous source/evidence pane before opening that finding's original material, if any. An uncited request must not inherit an unrelated image from the previous assessment, or offer a comparison button with no cited file to open. This addresses a misleading visual context without changing preserved evidence or adding document analysis. The transition from the fee-image finding to the uncited destination request was checked manually in the browser.
 
 ## Make source withdrawal actionable before sharing
 
