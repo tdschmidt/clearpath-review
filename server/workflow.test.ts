@@ -26,32 +26,40 @@ const base: SubmissionInput = {
 };
 const approved = { type: 'decide', outcome: 'approved', scope: 'This exact creative and supplied destination for the named offer.', rationale: 'Reviewed the supplied creative and destination against the selected offer reference.', reviewed: true };
 
-test('sharing an earlier approval requires reconsidering its withdrawn reference', async t => {
+test('a withdrawn reference requires fresh review before another approval can be shared', async t => {
   const s = await setup(t);
   let c = (await s.multipart('/api/cases', { ...base, fileRoles: ['creative'] }, [{ name: 'ad.png', bytes: png }])).body as ReviewCase;
   c = (await s.action(c, { type: 'confirm_intake' })).body;
   c = (await s.action(c, approved)).body;
   const decision = structuredClone(c.decisions[0]);
   const share = { type: 'publish_result', decisionId: decision.id, message: 'Approval for the recorded scope.' };
+  const replacement = (await s.multipart('/api/offers', {
+    product: base.product, name: 'Personal loan replacement', version: 'v4',
+    validFrom: '2026-09-01', validTo: '2026-11-30', source: 'Fictional offer owner',
+    disclosure: '', facts: [{ label: 'Fee', value: '5%', sourceFileIndex: 0, page: 1 }],
+    supersedesId: decision.offerId,
+  }, [{ name: 'reference.pdf', bytes: readFileSync('public/fixtures/offers/personal-loan.pdf') }])).body;
+  assert.ok(replacement.id);
   await s.json(`/api/offers/${offers[1].id}/withdraw`, { reason: 'Unrelated reference retired.' });
   c = (await s.action(c, share)).body;
+  assert.equal(c.publishedResults?.length, 1, 'Supersession alone and an unrelated withdrawal do not block sharing.');
   const withdrawn = (await s.json(`/api/offers/${decision.offerId}/withdraw`, { reason: 'Pricing under review.' })).body;
   const before = structuredClone(c);
   const blocked = await s.action(c, share);
   assert.equal(blocked.status, 409);
   assert.equal(blocked.body.code, 'reference_recheck_required');
   assert.deepEqual((await s.json(`/api/cases/${c.id}`)).body, before);
-  const referenceRecheck = { offerId: withdrawn.id, withdrawnAt: withdrawn.withdrawnAt, reason: 'Confirmed with the offer owner: the withdrawal concerns a different placement; this exact scoped approval remains applicable.' };
-  assert.equal((await s.action(c, { ...share, referenceRecheck: { ...referenceRecheck, offerId: offers[1].id } })).status, 409);
-  assert.equal((await s.action(c, { ...share, referenceRecheck: { ...referenceRecheck, withdrawnAt: '2020-01-01T00:00:00.000Z' } })).status, 409);
-  assert.equal((await s.action(c, { ...share, referenceRecheck: { ...referenceRecheck, reason: ' ' } })).status, 400);
-  assert.equal((await s.action(c, { ...share, referenceRecheck, actorId: 'priya' })).status, 400);
-  const shared = await s.action(c, { ...share, referenceRecheck });
-  assert.equal(shared.status, 200);
-  c = shared.body;
+  const referenceRecheck = { offerId: withdrawn.id, withdrawnAt: withdrawn.withdrawnAt, reason: 'A rationale cannot replace withdrawn evidence.' };
+  assert.equal((await s.action(c, { ...share, referenceRecheck })).status, 400, 'The former exception payload is no longer accepted.');
+  c = (await s.revise(c, { offerId: replacement.id, summary: 'Review the existing creative against corrected source evidence.' })).body;
+  assert.equal((await s.action(c, { ...share })).status, 409, 'An old decision stays blocked after the current reference changes.');
+  assert.equal((await s.action(c, approved)).status, 400, 'Replacement evidence still requires fresh intake.');
+  c = (await s.action(c, { type: 'confirm_intake' })).body;
+  c = (await s.action(c, approved)).body;
+  c = (await s.action(c, { ...share, decisionId: c.decisions.at(-1)!.id })).body;
   assert.deepEqual(c.decisions[0], decision, 'The historical decision and its source snapshot are unchanged.');
   assert.equal(c.publishedResults?.length, 2);
-  assert.ok(c.history.some(event => event.type === 'approval_reference_rechecked' && event.text.includes(referenceRecheck.reason) && event.text.includes(withdrawn.withdrawnAt)));
+  assert.equal(c.publishedResults?.at(-1)?.revisionId, currentRevision(c).id);
   const external = await s.json(`/api/submissions/${c.submitterToken}`);
   assert.equal(external.body.status, 'approved');
   assert.ok(!JSON.stringify(external.body).includes(referenceRecheck.reason));
@@ -59,6 +67,9 @@ test('sharing an earlier approval requires reconsidering its withdrawn reference
   // Logging something already communicated must remain possible; it is not permission to send.
   const communicated = await s.action(c, { type: 'record_communication', messageId: c.publishedResults![0].id, messageVersion: 1, recipient: 'Nina Patel', channel: 'Email', occurredAt: new Date().toISOString(), note: 'Recorded retrospectively.' });
   assert.equal(communicated.status, 200);
+  c = (await s.revise(communicated.body, { offerId: decision.offerId })).body;
+  c = (await s.action(c, { ...approved, outcome: 'rejected', rationale: 'This package cannot proceed.' })).body;
+  assert.equal((await s.action(c, { ...share, decisionId: c.decisions.at(-1)!.id })).status, 200, 'A rejection can still be communicated.');
 });
 
 async function setup(t: TestContext, seedDemo = false) {

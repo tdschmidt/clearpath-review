@@ -325,8 +325,12 @@ export default function Offers({ offers, onSaved, actorId }: Props) {
                     }}
                   >
                     <p>
-                      Withdrawal prevents this reference from being selected for
-                      new approval. Earlier records remain available.
+                      Withdraw when this reference must no longer support approval,
+                      for example because its facts are unreliable. This blocks new
+                      approvals and sharing earlier approvals based on it. If the
+                      source is simply superseded, add a new version instead.
+                      Historical records remain available; already-shared approvals
+                      need a separate reviewer decision to withdraw them.
                     </p>
                     <label className="field">
                       <span>Reason for withdrawal</span>

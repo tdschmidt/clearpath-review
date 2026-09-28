@@ -1333,18 +1333,6 @@ export function DraftForm({
           (offer) => offer.id === decision.offerId && offer.withdrawnAt,
         )
       : undefined;
-  const referenceKey = `${decision?.id || ""}/${withdrawnReference?.id || ""}/${withdrawnReference?.withdrawnAt || ""}`;
-  const [referenceReview, setReferenceReview] = useState({
-    key: "",
-    reason: "",
-    confirmed: false,
-  });
-  const referenceReason =
-    referenceReview.key === referenceKey ? referenceReview.reason : "";
-  const referenceConfirmed =
-    referenceReview.key === referenceKey && referenceReview.confirmed;
-  const referenceReady =
-    !withdrawnReference || (referenceConfirmed && !!referenceReason.trim());
   const historical =
     !!existing &&
     (existing.revisionId !== rev.id ||
@@ -1409,9 +1397,9 @@ export function DraftForm({
       );
       return;
     }
-    if (action.type === "publish_result" && !referenceReady) {
+    if (action.type === "publish_result" && withdrawnReference) {
       setError(
-        "Review the withdrawn reference and record why this approval still applies before sharing it.",
+        "Review a new revision with a current reference and record a new decision before sharing approval.",
       );
       return;
     }
@@ -1516,9 +1504,10 @@ export function DraftForm({
                   "No withdrawal reason recorded."}
               </p>
               <p>
-                The recorded decision has not changed. Review the withdrawal
-                before using this approval. If it no longer applies, withdraw
-                the approval from its decision record.
+                This approval cannot be shared again. Add a revision with a
+                current reference, complete review, and record a new decision.
+                The earlier decision remains in the record. If it was already
+                communicated and no longer applies, withdraw it from its record.
               </p>
               <button
                 type="button"
@@ -1530,40 +1519,16 @@ export function DraftForm({
               >
                 Open decision record
               </button>
-              <Field
-                label="Why this approval still applies"
-                hint="Internal record only. This explanation will not be shared with the submitter."
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => {
+                  onClose();
+                  window.location.hash = `review/${review.id}`;
+                }}
               >
-                <textarea
-                  rows={3}
-                  maxLength={3000}
-                  value={referenceReason}
-                  onChange={(e) =>
-                    setReferenceReview({
-                      key: referenceKey,
-                      reason: e.target.value,
-                      confirmed: referenceConfirmed,
-                    })
-                  }
-                />
-              </Field>
-              <label className="check-line">
-                <input
-                  type="checkbox"
-                  checked={referenceConfirmed}
-                  onChange={(e) =>
-                    setReferenceReview({
-                      key: referenceKey,
-                      reason: referenceReason,
-                      confirmed: e.target.checked,
-                    })
-                  }
-                />
-                <span>
-                  I reviewed this withdrawal and confirm the approval still
-                  applies to its recorded scope.
-                </span>
-              </label>
+                Return to package
+              </button>
             </section>
           )}
           {pending.length > 0 && (
@@ -1702,21 +1667,12 @@ export function DraftForm({
                 <button
                   type="button"
                   className="button secondary"
-                  disabled={busy || !reconciled || !referenceReady}
+                  disabled={busy || !reconciled || !!withdrawnReference}
                   onClick={() =>
                     void run({
                       type: "publish_result",
                       decisionId: decision.id,
                       message: body,
-                      ...(withdrawnReference
-                        ? {
-                            referenceRecheck: {
-                              offerId: withdrawnReference.id,
-                              withdrawnAt: withdrawnReference.withdrawnAt!,
-                              reason: referenceReason,
-                            },
-                          }
-                        : {}),
                     })
                   }
                 >

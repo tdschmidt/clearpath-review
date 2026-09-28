@@ -85,20 +85,13 @@ export function applyHandoff(c: ReviewCase, action: CaseAction, actor: string, o
       if (decision.withdrawn) throw new WorkflowError(409, 'This approval has been withdrawn.');
       const reference = offers.find(offer => offer.id === decision.offerId);
       if (decision.outcome === 'approved' && reference?.withdrawnAt) {
-        const recheck = action.referenceRecheck;
-        if (!recheck?.reason.trim() || recheck.offerId !== reference.id || recheck.withdrawnAt !== reference.withdrawnAt) {
-          throw new WorkflowError(409, 'The reference supporting this approval was withdrawn. Review the withdrawal and record why this approval still applies before sharing it.', 'reference_recheck_required');
-        }
-        if (participant(action.actorId).role !== 'reviewer') throw new WorkflowError(400, 'Select a reviewer to reconsider this approval before sharing it.');
+        throw new WorkflowError(409, 'The reference supporting this approval was withdrawn. Review a new revision with a current reference and record a new decision before sharing approval.', 'reference_recheck_required');
       }
       const reviewed = c.revisions.find(item => item.id === decision.revisionId)!;
       const assetIds = reviewed.components.filter(component => ['creative', 'destination'].includes(component.role)).map(component => component.assetId);
       const resultId = randomUUID();
       c.publishedResults ??= [];
       c.publishedResults.push({ id: resultId, decisionId: decision.id, revisionId: reviewed.id, createdAt: now(), publishedBy: actor, outcome: decision.outcome, scope: decision.scope, message: action.message, copy: reviewed.copy, destinationUrl: reviewed.destinationUrl, assetIds });
-      if (decision.outcome === 'approved' && reference?.withdrawnAt) {
-        event('approval_reference_rechecked', `Before sharing result ${resultId} for decision ${decision.id}, reviewed reference ${reference.id} (${reference.name}, ${reference.version}), withdrawn ${reference.withdrawnAt}: ${reference.withdrawalReason || 'No reason recorded'}. Approval remains applicable because: ${action.referenceRecheck!.reason}`);
-      }
       c.submitterAssetIds = [...new Set([...(c.submitterAssetIds || []), ...assetIds])];
       c.submitterToken ||= randomBytes(24).toString('base64url');
       event('result_shared', `Decision for revision ${reviewed.number} shared on the submission page. No email was sent.`);
