@@ -2931,3 +2931,11 @@ main:has(.case-page) {
   font-size: 12px;
   line-height: 1.6;
 }
+
+/* Queue priorities are explicit filters and dates, not inferred risk scores. */
+.queue-sorting { display: flex; gap: 20px; padding: 12px 22px; border-bottom: 1px solid var(--border, #e4e7eb); flex-wrap: wrap; }
+.queue-sorting label { display: flex; gap: 8px; align-items: center; color: #52616a; font-size: 13px; }
+.queue-sorting select { background: white; border: 1px solid #cbd3d9; padding: 7px; border-radius: 5px; }
+.review-table .next-action { white-space: normal; overflow: visible; text-overflow: clip; max-width: 280px; }
+.review-table .table-sub { white-space: normal; }
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #176a59; outline-offset: 3px; }

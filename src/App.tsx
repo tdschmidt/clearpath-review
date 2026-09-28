@@ -74,7 +74,7 @@ type Dialog =
   | { finding: Finding; status: Finding["status"] };
 type Page = "queue" | "decisions";
 const isClosed = (c: ReviewCase) =>
-  c.status === "approved" || c.status === "rejected";
+  c.status === "approved" || c.status === "rejected" || c.status === "cancelled";
 const findingNames = {
   correction: "Correction",
   evidence: "Evidence request",
@@ -132,7 +132,7 @@ export default function App() {
   function update(c: ReviewCase) {
     setCases((old) =>
       [c, ...old.filter((o) => o.id !== c.id)].sort((a, b) =>
-        b.updatedAt.localeCompare(a.updatedAt),
+        b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id),
       ),
     );
   }
@@ -370,6 +370,11 @@ export default function App() {
   );
 }
 
+function age(value: string) {
+  const days = Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 86400000));
+  return days ? `${days}d ago` : "today";
+}
+
 function Queue({
   cases,
   page,
@@ -381,10 +386,12 @@ function Queue({
   onNew: () => void;
   onSamples: () => void;
 }) {
-  const [filter, setFilter] = useState("all"),
+  const [filter, setFilter] = useState("active"),
     [search, setSearch] = useState("");
+  const [owner, setOwner] = useState("all");
+  const [sort, setSort] = useState("updated");
   useEffect(() => {
-    setFilter("all");
+    setFilter("active");
     setSearch("");
   }, [page]);
   const active = cases.filter((c) => !isClosed(c));
@@ -392,16 +399,21 @@ function Queue({
   const rows = records.filter(
     (c) =>
       (filter === "all" ||
-        (filter === "active" ? !isClosed(c) : c.status === filter)) &&
+        (filter === "active" ? ["needs_intake", "in_review"].includes(c.status) : filter === "completed" ? isClosed(c) : c.status === filter)) &&
+      (owner === "all" || c.owner === owner) &&
       `${c.title} ${c.reference} ${c.submitter} ${PRODUCT_LABELS[c.product]}`
         .toLowerCase()
         .includes(search.toLowerCase()),
-  );
+  ).sort((a, b) => {
+    if (sort === "oldest") return a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
+    if (sort === "launch") return (a.launchDate || "9999").localeCompare(b.launchDate || "9999") || a.id.localeCompare(b.id);
+    return b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id);
+  });
   const filters = [
-    ["all", "All submissions"],
-    ["in_review", "In review"],
+    ["active", "To review"],
     ["waiting", "Waiting"],
-    ["needs_intake", "Needs intake"],
+    ["completed", "Completed"],
+    ["all", "All submissions"],
   ];
   if (page === "decisions")
     return <DecisionRecord cases={cases} onNew={onNew} />;
@@ -464,6 +476,7 @@ function Queue({
               <button
                 key={key}
                 className={filter === key ? "selected" : ""}
+                aria-pressed={filter === key}
                 onClick={() => setFilter(key)}
               >
                 {label}
@@ -481,6 +494,10 @@ function Queue({
             />
           </label>
         </div>
+        <div className="queue-sorting">
+          <label>Reviewer <select value={owner} onChange={e => setOwner(e.target.value)}><option value="all">All reviewers</option>{[...new Set(cases.map(c => c.owner))].map(name => <option key={name}>{name}</option>)}</select></label>
+          <label>Sort <select value={sort} onChange={e => setSort(e.target.value)}><option value="updated">Recently updated</option><option value="oldest">Oldest received</option><option value="launch">Requested launch</option></select></label>
+        </div>
         {rows.length ? (
           <div className="table-scroll">
             <table className="review-table">
@@ -490,7 +507,7 @@ function Queue({
                   <th>Product / placement</th>
                   <th>Status</th>
                   <th>Next action</th>
-                  <th>Updated</th>
+                  <th>Timing</th>
                   <th aria-label="Open" />
                 </tr>
               </thead>
@@ -551,14 +568,14 @@ function Queue({
                                 : "Review current package"}
                       </span>
                       <span className="table-sub">
-                        {isClosed(c) ? c.owner : c.nextOwner || c.owner}
+                        {[...new Set([c.owner, ...(c.status === "waiting" ? [c.nextOwner] : []), ...c.findings.filter(f => f.status === "open" || f.needsRecheck).map(f => f.owner)])].filter(Boolean).join(" · ")}
                       </span>
                     </td>
                     <td className="updated-cell">
-                      {date(c.updatedAt)}
-                      <span className="table-sub">
-                        v{currentRevision(c).number}
-                      </span>
+                      {c.launchDate ? `Launch ${date(c.launchDate)}` : "No launch date"}
+                      <span className="table-sub">Received {age(c.createdAt)} · v{currentRevision(c).number}</span>
+                      {c.status === "waiting" && <span className="table-sub">Waiting {age(c.history.findLast(e => e.type === "waiting")?.createdAt || c.updatedAt)}</span>}
+                      <span className="table-sub">Updated {date(c.updatedAt)}</span>
                     </td>
                     <td>
                       <ChevronRight size={18} />
@@ -679,13 +696,13 @@ function DecisionRecord({
                   <tr
                     key={decision.id}
                     onClick={() => {
-                      window.location.hash = `review/${review.id}/activity`;
+                      window.location.hash = `review/${review.id}/decision/${decision.id}`;
                     }}
                   >
                     <td>
                       <a
                         className="submission-title"
-                        href={`#review/${review.id}/activity`}
+                        href={`#review/${review.id}/decision/${decision.id}`}
                       >
                         {review.title}
                       </a>
