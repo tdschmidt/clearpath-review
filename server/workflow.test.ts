@@ -24,7 +24,7 @@ const base: SubmissionInput = {
   intendedUse: 'Named affiliate social placement and its destination', copy: 'Credit approval required.',
   destinationUrl: '', fileRoles: [],
 };
-const approved = { type: 'decide', outcome: 'approved', scope: 'This exact creative and supplied destination for the named offer.', rationale: '', reviewed: true };
+const approved = { type: 'decide', outcome: 'approved', scope: 'This exact creative and supplied destination for the named offer.', rationale: 'Reviewed the supplied creative and destination against the selected offer reference.', reviewed: true };
 
 async function setup(t: TestContext, seedDemo = false) {
   const dataDir = mkdtempSync(join(tmpdir(), 'clearpath-test-'));
@@ -366,4 +366,18 @@ test('export fails explicitly for oversized, changed, or missing originals and n
   assert.equal(response.status, 404);
   assert.equal((await response.json()).code, 'asset_unavailable');
   assert.deepEqual((await h.json(`/api/cases/${c.id}`)).body, c);
+});
+
+
+test('findings and decisions require a recorded human basis on the server', async t => {
+  const h = await setup(t);
+  let c: ReviewCase = (await h.multipart('/api/cases', base)).body;
+  const emptyFinding = { kind: 'question', title: 'Check claim', detail: ' ', request: 'Confirm the claim.', location: 'Caption', assetId: '', owner: REVIEWER, material: true };
+  assert.equal((await h.action(c, { type: 'add_finding', finding: emptyFinding })).status, 400);
+  assert.equal(h.app.locals.store.get(c.id).version, c.version);
+  c = (await h.action(c, { type: 'confirm_intake' })).body;
+  assert.equal((await h.action(c, { ...approved, rationale: ' ' })).status, 400);
+  assert.equal(h.app.locals.store.get(c.id).decisions.length, 0);
+  assert.throws(() => h.app.locals.store.action(c.id, { ...approved, rationale: '', expectedVersion: c.version }), /rationale/);
+  assert.throws(() => h.app.locals.store.action(c.id, { type: 'add_finding', finding: emptyFinding, expectedVersion: c.version }), /basis/);
 });

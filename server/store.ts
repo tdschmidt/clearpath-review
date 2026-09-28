@@ -198,6 +198,7 @@ export class WorkflowStore {
           this.event(c, 'intake_confirmed', `Intake confirmed for revision ${revision.number}.`);
           break;
         case 'add_finding': {
+          if (!action.finding.detail.trim()) throw new WorkflowError(400, 'Record the basis for this finding.');
           if (action.finding.assetId && !revision.components.some(component => component.assetId === action.finding.assetId && component.role !== 'excluded')) throw new WorkflowError(400, 'Choose an attachment in the current review package.');
           const finding = { ...action.finding, id: id(), number: Math.max(0, ...c.findings.map(f => f.number)) + 1, status: 'open' as const, createdAt: now(), createdBy: REVIEWER, revisionId: revision.id, needsRecheck: false };
           c.findings.push(finding);
@@ -226,6 +227,7 @@ export class WorkflowStore {
           this.event(c, 'note', 'An internal note was added.');
           break;
         case 'decide': {
+          if (!action.rationale.trim()) throw new WorkflowError(400, 'Record the rationale for this decision.');
           if (action.outcome === 'approved') {
             if (c.confirmedRevisionId !== revision.id || !action.reviewed || !action.scope.trim()) throw new WorkflowError(400, 'Approval requires confirmed intake, completed review, and a decision scope.', 'approval_requirements');
             if (openBlockers(c).length) throw new WorkflowError(409, 'Material findings still need resolution or recheck.', 'unresolved_findings');

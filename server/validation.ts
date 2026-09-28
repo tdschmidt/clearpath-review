@@ -30,7 +30,7 @@ export const revisionSchema = z.object({
 }).strict();
 const finding = z.object({
   kind: z.enum(['correction', 'evidence', 'question']), title: required(200),
-  detail: text(5000), request: required(3000), location: text(300), assetId: text(120),
+  detail: required(5000), request: required(3000), location: text(300), assetId: text(120),
   owner: required(120), material: z.boolean(),
 }).strict();
 const version = { expectedVersion: z.number().int().positive() };
@@ -41,6 +41,6 @@ export const actionSchema = z.discriminatedUnion('type', [
   z.object({ ...version, type: z.literal('set_waiting'), nextOwner: required(120), reason: required(2000) }).strict(),
   z.object({ ...version, type: z.literal('resume') }).strict(),
   z.object({ ...version, type: z.literal('add_note'), text: required(5000) }).strict(),
-  z.object({ ...version, type: z.literal('decide'), outcome: z.enum(['approved', 'rejected']), scope: text(3000), rationale: text(5000), reviewed: z.boolean() }).strict(),
+  z.object({ ...version, type: z.literal('decide'), outcome: z.enum(['approved', 'rejected']), scope: text(3000), rationale: required(5000), reviewed: z.boolean() }).strict(),
   z.object({ ...version, type: z.literal('save_draft'), subject: required(300), body: required(20000) }).strict(),
 ]);
