@@ -613,7 +613,7 @@ export function SubmissionForm({
             </div>
             <Field
               label="Intended use"
-              hint="Include placement, audience/geography, and any affiliate, targeting, or compensation context that matters. Note what is still unknown."
+              hint="Include placement, audience/geography, planned run dates, and relevant affiliate, targeting, or compensation context. Note what is still unknown."
             >
               <textarea
                 rows={2}
@@ -1207,12 +1207,13 @@ export function DecisionForm({
           )}
           <Field
             label="Scope of this decision"
-            hint="Identify the placement and intended use. This does not approve future edits."
+            hint="Limit approval to the reviewed creative and destination. State placement, audience/geography, run dates, and any product/entity assumptions or exclusions. Flag unknowns; this does not approve future edits."
           >
             <textarea
               required={outcome === "approved"}
               maxLength={3000}
-              rows={3}
+              rows={4}
+              placeholder="For example: Northstar paid social for California adults, October 5–November 15; this version’s image and destination for ClearPath’s Standard personal loan only. Excludes other placements and later edits."
               value={scope}
               onChange={(e) => setScope(e.target.value)}
             />

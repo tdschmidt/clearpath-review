@@ -928,7 +928,7 @@ function PackageForm({
         </Field>
         <Field
           label="Where and how will the material be used?"
-          hint="Include the audience, locations, affiliate relationship, and any targeting or compensation details that matter. Say what is still unknown."
+          hint="Include the audience, locations, planned run dates, affiliate relationship, and any targeting or compensation details that matter. Say what is still unknown."
         >
           <textarea
             required

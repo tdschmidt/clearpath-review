@@ -15,4 +15,8 @@ For a shorter presentation, use **Make room for what’s next**. Its legacy find
 
 Credit cards and mortgage prequalification share this workflow. The card's matching annual-fee fact is not legal clearance; a reviewer still has to assess advertising requirements. PNG/JPEG and PDFs have previews; other formats are preserved for download. No detection, extraction, or live-web capture is implied.
 
+For the decision in step 6, demonstrate a bounded scope: for example, the named affiliate's paid-social placement for a stated audience and geography, between stated dates, using only this revision's image and destination for the selected product. These are demonstration assumptions, not verified campaign facts. Leave unknowns explicit and explain any exclusions. The app preserves that scope; it does not certify state-law coverage or stop use after an end date.
+
+The card sample now has one required finding for its unfinished disclosure review, including both the image and caption. Its reference is intentionally incomplete. It is a useful second example of an evidence request, not an alternative already-approved campaign.
+
 If a stale save occurs, entered work stays available and the latest context loads. Internal and external revision drafts preserve actual edits and require explicit choices when they conflict with the new package. Recheck file retention and replacement choices before retrying. Decision acknowledgment resets; an open reply must be checked again if its package or decision changes. Unfinished text is kept for this tab session. Uploads require reselecting after a browser restart.

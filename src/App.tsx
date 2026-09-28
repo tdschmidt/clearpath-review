@@ -1078,7 +1078,8 @@ function Guide({ onClose }: { onClose: () => void }) {
           <h3>Add findings</h3>
           <p>
             Record the issue, supporting evidence, requested change, and person
-            responsible.
+            responsible. Choose which requests the submitter should see and
+            share them on the submission link.
           </p>
         </div>
         <div>
@@ -1086,15 +1087,19 @@ function Guide({ onClose }: { onClose: () => void }) {
           <h3>Review revisions</h3>
           <p>
             Compare the updated material with the previous version. Resolve
-            addressed findings and leave unanswered requests open.
+            addressed findings and leave unanswered requests open. Inspect
+            returned evidence before assessing the response; a reply alone
+            does not resolve a finding.
           </p>
         </div>
         <div>
           <span>04</span>
           <h3>Record a decision</h3>
           <p>
-            State the version, approved use, and basis for the decision. Prepare
-            a reply to send through your email client.
+            State the reviewed version, permitted use, and basis. Share the
+            decision on the submission link, or record communication of its
+            exact saved message outside this workspace. Saving a draft does
+            not complete that handoff.
           </p>
         </div>
       </div>
