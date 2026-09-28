@@ -34,8 +34,20 @@ The queue and case banner identify a withdrawn reference supporting the current 
 
 Completed-case banners also distinguish a shared result, a recorded outside communication, and an uncommunicated decision. Only the latter asks for a handoff; recording an email does not claim verified delivery. These corrections keep next actions consistent with the record and avoid redundant work.
 
+The final reply check removed “Share feedback” from closed cases, where the server correctly rejects new review requests. The composer keeps the applicable decision-sharing action and draft controls. A button should not offer a transition the current state cannot perform.
+
 ## Display the actual placement in revision forms
 
 Manual browser inspection found that a recorded placement such as “Affiliate / paid social” was absent from the form's fixed option list. The browser displayed “Paid social” while the saved value remained different. Both revision forms now retain the exact current placement as an option. This prevents an apparent change in approval context and preserves imported or more specific channel descriptions. A browser regression checks both forms and a saved external revision.
 
 The full browser run also caught an older test that approved after receiving evidence without explicitly assessing it. Its reviewer now cites that response in the corresponding finding disposition, matching the corrected workflow.
+
+## Final verification and remaining boundaries
+
+The final build, all **35 API tests**, and all **23 browser tests** passed. Manual checks used a separate temporary database: the withdrawn-reference queue action, disabled historical source choice, reviewer attribution, finding/evidence switch, exact placement, completed banner, and submitter access were inspected. The prepared-scenario script also completed normally against that database. No email was sent.
+
+The live app was restarted behind the existing tunnel after a SQLite backup. All **10 cases, 4 references, and 26 stored original files** matched the pre-update records and hashes. The public workspace, submission page, and health endpoint returned successfully. The one-page PDF was regenerated, confirmed to remain one page, and visually inspected. The README and flow index expose both sides and the important edge cases.
+
+No further submission-blocking defect was identified in these checks. This was not an exhaustive security, accessibility, device, or load audit. The principal remaining limitations are an unauthenticated internal demo, no notifications or email intake/delivery tracking, bounded image/PDF previews, free-text campaign run periods, no post-publication monitoring, and local hosting without production recovery/retention controls. Human review and manual source entry remain explicit. Assessing a response does not establish that its judgment is correct; a reviewer must withdraw an approval if new evidence changes it.
+
+Before sending the project, confirm the reviewer can access the private GitHub repository and keep the Mac, app, and tunnel running. A real rollout should validate this workflow with reviewers and affiliates before claiming reduced handling time or fewer correction rounds.

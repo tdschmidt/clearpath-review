@@ -1367,6 +1367,9 @@ export function DraftForm({
 }: ActionProps & { draftId?: string; offers: Offer[] }) {
   const rev = currentRevision(review);
   const existing = review.drafts.find((d) => d.id === draftId);
+  const canShareFeedback = !["approved", "rejected", "cancelled"].includes(
+    review.status,
+  );
   const decision = review.decisions.findLast(
     (d) => d.revisionId === rev.id && !d.withdrawn,
   );
@@ -1822,39 +1825,41 @@ export function DraftForm({
           >
             Discard edits
           </button>
-          <button
-            type="button"
-            className="button secondary"
-            disabled={
-              busy ||
-              !reconciled ||
-              !body.trim() ||
-              !subject.trim() ||
-              (!decision &&
-                waitAfterSharing &&
-                (!waitingOwner.trim() || !waitingReason.trim()))
-            }
-            onClick={() =>
-              void run({
-                type: "publish_feedback",
-                ...(!decision && waitAfterSharing
-                  ? {
-                      waiting: {
-                        nextOwner: waitingOwner,
-                        reason: waitingReason,
-                      },
-                    }
-                  : {}),
-                findingIds: selected.filter((id) =>
-                  pending.some((f) => f.id === id),
-                ),
-                subject,
-                body,
-              })
-            }
-          >
-            Share feedback on submission link
-          </button>
+          {canShareFeedback && (
+            <button
+              type="button"
+              className="button secondary"
+              disabled={
+                busy ||
+                !reconciled ||
+                !body.trim() ||
+                !subject.trim() ||
+                (!decision &&
+                  waitAfterSharing &&
+                  (!waitingOwner.trim() || !waitingReason.trim()))
+              }
+              onClick={() =>
+                void run({
+                  type: "publish_feedback",
+                  ...(!decision && waitAfterSharing
+                    ? {
+                        waiting: {
+                          nextOwner: waitingOwner,
+                          reason: waitingReason,
+                        },
+                      }
+                    : {}),
+                  findingIds: selected.filter((id) =>
+                    pending.some((f) => f.id === id),
+                  ),
+                  subject,
+                  body,
+                })
+              }
+            >
+              Share feedback on submission link
+            </button>
+          )}
           <button
             type="submit"
             className="button primary"

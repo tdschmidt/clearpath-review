@@ -176,6 +176,9 @@ test("received answers must be assessed before approval and before its handoff",
     .click();
   const reply = page.getByRole("dialog", { name: "Prepare a reply" });
   await expect(
+    reply.getByRole("button", { name: "Share feedback on submission link" }),
+  ).toHaveCount(0);
+  await expect(
     reply.getByRole("region", { name: "Responses need assessment" }),
   ).toBeVisible();
   await expect(
